@@ -9,6 +9,8 @@
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/select.h>
+#include <algorithm>
+#include <array>
 
 namespace messageTypes {
     constexpr std::string_view heartbeat = "01\n";
@@ -18,13 +20,20 @@ namespace messageTypes {
     constexpr std::string_view end = "05\n";
     constexpr std::string_view ack = "06\n";
     constexpr std::string_view nack = "07\n";
+
+    constexpr std::array<std::string_view, 7> all = {
+        heartbeat, talk, file, chunk, end, ack, nack
+    };
+
+    bool isValidMessageType(std::string_view msg);
 }
 
 class Server {
 
     private:
 
-        std::unordered_map<std::string, sockaddr_in> clients;
+                        // key = name ----> value = (ip, tempo)
+        std::unordered_map<std::string, std::pair<std::string, int>> clients;
         
         int server_socket;
         int port;

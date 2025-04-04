@@ -1,5 +1,9 @@
 #include "../include/Server.hpp"
 
+bool messageTypes::isValidMessageType(std::string_view msg) {
+    return std::find(messageTypes::all.begin(), messageTypes::all.end(), msg) != messageTypes::all.end();
+}
+
 Server::Server(int port, std::string name) : port(port) {
 
     // ----------------------------------------------------------------------------------------------------------------
@@ -47,10 +51,6 @@ bool Server::serverInit() {
     return true;
 }
 
-void Server::handleMessage(char* buffer, sockaddr_in* addr) {
-
-}
-
 bool Server::sendKeepAlive() {
 
     struct sockaddr_in addr;
@@ -80,6 +80,27 @@ bool Server::sendKeepAlive() {
     }
 
     return true;
+}
+
+void Server::handleMessage(char* buffer, sockaddr_in* addr) {
+
+    std::string ip = inet_ntoa(addr->sin_addr);
+
+    std::string buff(buffer);
+
+    if(buff.size() < 14) {
+        std::cout << "Mensagem incompleta\n";
+    }
+
+    std::string message = buff.substr(0, 3);
+    std::string name = buff.substr(3, 14);
+
+    if(!messageTypes::isValidMessageType(message)) {
+        std::cout << "Mensagem inválida\n";
+    }
+
+    
+
 }
 
 void Server::serverStart() {
