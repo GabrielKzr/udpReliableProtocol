@@ -28,6 +28,14 @@ namespace messageTypes {
     bool isValidMessageType(std::string_view msg);
 }
 
+/* // acho que talvez mais pra frente precise usar isso ao invés do pair no map de clients
+struct clientInfo {
+    std::string ip;
+    int counter;
+    int id;
+};
+*/
+
 class Server {
 
     private:

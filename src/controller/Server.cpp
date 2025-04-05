@@ -4,12 +4,18 @@ bool messageTypes::isValidMessageType(std::string_view msg) {
     return std::find(messageTypes::all.begin(), messageTypes::all.end(), msg) != messageTypes::all.end();
 }
 
+/*
+ClientInfo::ClientInfo(std::string ip, int counter, int id) : ip(ip), counter(counter), id(id) {
+    
+}
+*/
+
 Server::Server(int port, std::string name) : port(port) {
 
     // ----------------------------------------------------------------------------------------------------------------
 
     // * informação importante, '\n' será o divisor do protocolo entre mensagem, nome e pacote (dados)
-    // * basicamente o header será:
+    // * basicamente o header será: (para o caso de heartbeat)
     //              [    messageType    ][     name     ][                         data                            ]
     //               <------- 3 ------->  <---- 11 ---->  <----------------- tamanho a denfinir ------------------>
 
@@ -88,19 +94,67 @@ void Server::handleMessage(char* buffer, sockaddr_in* addr) {
 
     std::string buff(buffer);
 
-    if(buff.size() < 14) {
-        std::cout << "Mensagem incompleta\n";
-    }
-
     std::string message = buff.substr(0, 3);
-    std::string name = buff.substr(3, 14);
 
     if(!messageTypes::isValidMessageType(message)) {
         std::cout << "Mensagem inválida\n";
     }
 
-    
+    if(message == messageTypes::heartbeat) {
 
+        if(buff.size() < 14) {
+            std::cout << "Heartbeat inválido\n";
+        }
+
+        std::string name = buff.substr(3, 14);
+
+        // valor '0', porque o recebimento de um heartbeat reseta o timer de heartbeat
+        // caso não exista, apenas adiciona o valor com ip e counter = 0
+        clients.insert_or_assign(name, std::make_pair(ip, 0));
+
+    } else if(message == messageTypes::talk) {
+
+        if(buff.size() < 7) {
+            std::cout << "Talk inválido\n";
+        }
+
+        // id por enquanto só tem função de responder no ack, mas talvez deu pra usar
+        // em outra função, senão é um byte meio inutil aqui
+        std::string s_id = buff.substr(3, 7);
+
+        std::string data = buff.substr(7);
+
+        std::cout << "Received TALL Data from "  << ip << ": " << data << std::endl;
+        
+        std::string msg = std::string(messageTypes::ack) + s_id;
+
+        // atualiza a porta, porque a porta do fd que recebeu é diferente
+        // da porta que eu realmente to usando eu acho, talvez seja bom testar isso
+        // é um conhecimento importante para redes em geral
+        addr->sin_port = htons(this->port);
+
+        sendto(server_socket, msg.c_str(), msg.size(), 0, (sockaddr*)&addr, sizeof(addr));     
+
+    } else if(message == messageTypes::file) {
+
+    } else if(message == messageTypes::chunk) {
+
+    } else if(message == messageTypes::end) {
+
+    } else if(message == messageTypes::ack) {
+
+        // fazer algum mecanismo de id esperado, para caso for diferente, fazer retransmissão, (porém doq?)
+        // talvez o melhor seja fazer uma classe para gerencia de mensagens, onde ele vai ter uma mensagem que está
+        // atualmente esperando ser completada junto com o id, talvez colocar isso nessa classe fique 
+        // muito bagunçado
+        //
+        // da pra usar uma ideia tipo a de escalonador onde tem uma taks q "ocupa" o processamento
+
+    } else if(message == messageTypes::nack) {
+
+    } else {
+        std::cout << "Tipo de mensagem desconhecido\n";
+    }
 }
 
 void Server::serverStart() {
