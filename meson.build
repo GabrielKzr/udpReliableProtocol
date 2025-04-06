@@ -8,7 +8,9 @@ incdir = include_directories('src/include')
 
 src = [
 	'src/main.cpp', 
-    'src/controller/Server.cpp'
+    'src/controller/Server.cpp',
+	'src/controller/PacketManager.cpp',
+	'src/controller/MessageTypes.cpp',
 ]
 
 deps = [

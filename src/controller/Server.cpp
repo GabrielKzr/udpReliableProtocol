@@ -1,9 +1,5 @@
 #include "../include/Server.hpp"
 
-bool messageTypes::isValidMessageType(std::string_view msg) {
-    return std::find(messageTypes::all.begin(), messageTypes::all.end(), msg) != messageTypes::all.end();
-}
-
 /*
 ClientInfo::ClientInfo(std::string ip, int counter, int id) : ip(ip), counter(counter), id(id) {
     
@@ -58,6 +54,7 @@ bool Server::serverInit() {
 }
 
 bool Server::sendKeepAlive() {
+    std::lock_guard<std::mutex> lock(sendMutex);  // protege alterações no socket
 
     struct sockaddr_in addr;
     std::memset(&addr, 0, sizeof(addr));
@@ -71,7 +68,7 @@ bool Server::sendKeepAlive() {
         return false;
     }
 
-    const char* heartbeat = std::string(std::string(messageTypes::heartbeat) + name).c_str();
+    const char* heartbeat = std::string(std::string(messageTypes::toString(messageTypes::Type::Heartbeat)) + name).c_str();
 
     int n = sendto(this->server_socket, heartbeat, sizeof(heartbeat), 0, (struct sockaddr*)&addr, sizeof(addr));
     if (n < 0) {
@@ -89,73 +86,78 @@ bool Server::sendKeepAlive() {
 }
 
 void Server::handleMessage(char* buffer, sockaddr_in* addr) {
-
     std::string ip = inet_ntoa(addr->sin_addr);
-
     std::string buff(buffer);
+    std::string_view message = buff.substr(0, 3);  // mantém como string_view
 
-    std::string message = buff.substr(0, 3);
-
-    if(!messageTypes::isValidMessageType(message)) {
+    auto typeOpt = messageTypes::fromString(message);
+    if (!typeOpt.has_value()) {
         std::cout << "Mensagem inválida\n";
+        return;
     }
 
-    if(message == messageTypes::heartbeat) {
+    auto type = typeOpt.value();
 
-        if(buff.size() < 14) {
-            std::cout << "Heartbeat inválido\n";
+    switch (type) {
+        case messageTypes::Type::Heartbeat: {
+            if (buff.size() < 17) { // 3 + 14
+                std::cout << "Heartbeat inválido\n";
+                break;
+            }
+            std::string name = buff.substr(3, 14);
+            clients.insert_or_assign(name, std::make_pair(ip, 0));
+            break;
         }
 
-        std::string name = buff.substr(3, 14);
+        case messageTypes::Type::Talk: {
+            if (buff.size() < 7) {
+                std::cout << "Talk inválido\n";
+                break;
+            }
 
-        // valor '0', porque o recebimento de um heartbeat reseta o timer de heartbeat
-        // caso não exista, apenas adiciona o valor com ip e counter = 0
-        clients.insert_or_assign(name, std::make_pair(ip, 0));
+            std::string s_id = buff.substr(3, 4); // 4 caracteres do ID
+            std::string data = buff.substr(7);
 
-    } else if(message == messageTypes::talk) {
+            std::cout << "Received TALK Data from " << ip << ": " << data << std::endl;
 
-        if(buff.size() < 7) {
-            std::cout << "Talk inválido\n";
+            std::string msg = std::string(messageTypes::toString(messageTypes::Type::Ack)) + s_id;
+
+            addr->sin_port = htons(this->port);
+            sendto(server_socket, msg.c_str(), msg.size(), 0, (sockaddr*)&addr, sizeof(*addr));
+            break;
         }
 
-        // id por enquanto só tem função de responder no ack, mas talvez deu pra usar
-        // em outra função, senão é um byte meio inutil aqui
-        std::string s_id = buff.substr(3, 7);
+        case messageTypes::Type::File: {
+            // implementar
+            break;
+        }
 
-        std::string data = buff.substr(7);
+        case messageTypes::Type::Chunk: {
+            // implementar
+            break;
+        }
 
-        std::cout << "Received TALL Data from "  << ip << ": " << data << std::endl;
-        
-        std::string msg = std::string(messageTypes::ack) + s_id;
+        case messageTypes::Type::End: {
+            // implementar
+            break;
+        }
 
-        // atualiza a porta, porque a porta do fd que recebeu é diferente
-        // da porta que eu realmente to usando eu acho, talvez seja bom testar isso
-        // é um conhecimento importante para redes em geral
-        addr->sin_port = htons(this->port);
+        case messageTypes::Type::Ack: {
+            // lógica de ACK (futura)
+            break;
+        }
 
-        sendto(server_socket, msg.c_str(), msg.size(), 0, (sockaddr*)&addr, sizeof(addr));     
+        case messageTypes::Type::Nack: {
+            // lógica de NACK (futura)
+            break;
+        }
 
-    } else if(message == messageTypes::file) {
-
-    } else if(message == messageTypes::chunk) {
-
-    } else if(message == messageTypes::end) {
-
-    } else if(message == messageTypes::ack) {
-
-        // fazer algum mecanismo de id esperado, para caso for diferente, fazer retransmissão, (porém doq?)
-        // talvez o melhor seja fazer uma classe para gerencia de mensagens, onde ele vai ter uma mensagem que está
-        // atualmente esperando ser completada junto com o id, talvez colocar isso nessa classe fique 
-        // muito bagunçado
-        //
-        // da pra usar uma ideia tipo a de escalonador onde tem uma taks q "ocupa" o processamento
-
-    } else if(message == messageTypes::nack) {
-
-    } else {
-        std::cout << "Tipo de mensagem desconhecido\n";
+        default:
+            std::cout << "Tipo de mensagem desconhecido\n";
+            break;
     }
 }
+
 
 void Server::serverStart() {
 
@@ -171,16 +173,25 @@ void Server::serverStart() {
     socklen_t len = sizeof(clientAddr);
     bool closed = false;
 
-    /*
-        Se necessário lançar threads, lançar aqui
+    // Se necessário lançar threads, lançar aqui
 
-        // ---------------------------------------
+    std::atomic<bool> running = true;
+
+    // ---------------------------------------
+
+    std::thread keepAliveThread([this, &running]() {
+        while (running) {
+            std::this_thread::sleep_for(std::chrono::seconds(5));
+            std::cout << "Enviando Keep Alive\n";
+            if (!this->sendKeepAlive()) {
+                std::cerr << "Erro ao enviar keep alive\n";
+                // você pode optar por alterar running = false aqui
+            }
+        }
+    });
 
 
-
-
-        // ---------------------------------------
-    */
+    // ---------------------------------------
 
     while(!closed) {
 
@@ -212,10 +223,16 @@ void Server::serverStart() {
         }
 
         // keep-alive == heartbeat
-    
+        
+        // essa lógica de keep-alive não funciona, vai precisar existir uma thread pra isso
         std::cout << "Enviando Keep Alive \n";
         if(!sendKeepAlive()) {
             closed = true;
         }
+    }
+
+    running = false;
+    if (keepAliveThread.joinable()) {
+        keepAliveThread.join();
     }
 }
