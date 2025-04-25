@@ -11,11 +11,10 @@
 #include <sys/select.h>
 #include <algorithm>
 
-#include "MessageTypes.hpp"
+#include "MessageType.hpp"
 
 struct Message {
-    std::string msg;
-    int id;
+    Message_t* msg;
     bool acked; 
 };
 

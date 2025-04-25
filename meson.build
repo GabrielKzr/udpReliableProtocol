@@ -11,6 +11,7 @@ src = [
     'src/controller/Server.cpp',
 	'src/controller/PacketManager.cpp',
 	'src/controller/MessageTypes.cpp',
+	'src/controller/Utils.cpp'
 ]
 
 deps = [

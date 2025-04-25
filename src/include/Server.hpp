@@ -7,21 +7,20 @@
 #include <mutex>
 #include <atomic>
 #include <thread>
+#include "Utils.hpp"
 
-/* // acho que talvez mais pra frente precise usar isso ao invés do pair no map de clients
+
 struct clientInfo {
     std::string ip;
-    int counter;
-    int id;
+    int tempo;
 };
-*/
 
 class Server {
 
     private:
 
                         // key = name ----> value = (ip, tempo)
-        std::unordered_map<std::string, std::pair<std::string, int>> clients;
+        std::unordered_map<std::string, clientInfo> clients;
         
         int server_socket;
         int port;
@@ -35,7 +34,7 @@ class Server {
         bool sendKeepAlive();
         bool serverInit();
 
-        void handleMessage(char* buffer, sockaddr_in* addr);
+        void handleMessage(Message_t* buffer, sockaddr_in* addr, int receivedBytes);
 
     public:
 
