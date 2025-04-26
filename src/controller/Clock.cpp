@@ -23,7 +23,7 @@ void Clock::_counter() {
     running = true; // Inicia o relógio
 
     while (running) {
-           
+
         for (auto& client : clients) {
             std::lock_guard<std::mutex> lock(clockMutex); // Protege o acesso à lista de clientes
             // std::cout << "Contando para o cliente: " << client.first << " com IP: " << client.second.ip << std::endl;
@@ -31,17 +31,24 @@ void Clock::_counter() {
             if(client.second.tempo == 10) {
                 clients.erase(client.first);
                 std::cout << "Cliente " << client.first << " removido por timeout." << std::endl;
+            } else {
+                client.second.tempo++;
             }
-            // espera 1 segundo
-            client.second.tempo++;
+        }
+
+        if(clients.empty()) {
+            std::cout << "Nenhum cliente conectado." << std::endl;
         }
 
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
+
+    std::cout << "Relógio parado." << std::endl;
 }
 
 bool Clock::HandleNewClient(std::string name, clientInfo client) {
     std::lock_guard<std::mutex> lock(clockMutex); // Protege o acesso à lista de clientes
+    std::cout << "Relógio parado." << std::endl;
     clients.insert_or_assign(name, client);
     return true;
 }

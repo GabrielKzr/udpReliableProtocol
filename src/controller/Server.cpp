@@ -10,6 +10,8 @@ Server::Server(int port, std::string name) : port(port) {
 
     // ----------------------------------------------------------------------------------------------------------------
 
+    // o header é outro, eu só n refiz por preguiça
+
     // * informação importante, '\n' será o divisor do protocolo entre mensagem, nome e pacote (dados)
     // * basicamente o header será: (para o caso de heartbeat)
     //              [    messageType    ][     name     ][                         data                            ]
@@ -17,10 +19,6 @@ Server::Server(int port, std::string name) : port(port) {
 
     // -----------------------------------------------------------------------------------------------------------------  
 
-    // name terá 10 de tamanho, e no final possuirá um \n 
-    if (name.size() < 10) {
-        name.resize(10, ' '); 
-    }
     this->name = name;
     
     server_socket = socket(AF_INET, SOCK_DGRAM, 0);
@@ -64,15 +62,21 @@ bool Server::sendKeepAlive() {
     addr.sin_port = htons(8080);  // Porta do servidor de escuta
     addr.sin_addr.s_addr = inet_addr("255.255.255.255");
 
+    
     int bc = 1;
     if (setsockopt(this->server_socket, SOL_SOCKET, SO_BROADCAST, &bc, sizeof(bc)) < 0) {
         std::cerr << "Erro ao configurar o socket para broadcast!" << std::endl;
         return false;
     }
-
-    // Enviando o pacote de heartbeat
-    Message_t heartbeat(0x001, 0, this->name.c_str(), 0, 0, {0}, 0, {0});
     
+    std::cout << this->name << std::endl;
+
+    uint8_t id[4] = {0};
+    uint8_t hash[16] = {0};
+    uint8_t payload[1430] = {0};
+    // Enviando o pacote de heartbeat
+    Message_t heartbeat(0x001, id, this->name.c_str(), 0, 0, hash, 0, payload);
+
     int n = sendto(this->server_socket, &heartbeat, sizeof(heartbeat), 0, (struct sockaddr*)&addr, sizeof(addr));
     if (n < 0) {
         std::cerr << "Erro ao enviar pacote!" << std::endl;
@@ -93,6 +97,7 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
     
     
     switch (message->type) {
+
         case 0x001: {
             
             clientInfo client = {ip, 0}; // Inicializa o clientInfo com o IP e tempo 0
@@ -100,7 +105,6 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
             std::cout << "Heartbeat recebido de " << ip << ": " << message->payload << std::endl;
             break;
         }
-
         
         // FAZER CLASSE CLOCK
 
@@ -165,7 +169,7 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
     std::cout << "Tipo de mensagem desconhecido\n";
     break;
     */
-}
+    }
 }
 
 
@@ -191,11 +195,12 @@ void Server::serverStart() {
 
     std::thread keepAliveThread([this, &running]() {
         while (running) {
+            std::cout << "Esperando 5 segundos para enviar Keep Alive\n";
             std::this_thread::sleep_for(std::chrono::seconds(5));
             std::cout << "Enviando Keep Alive\n";
             if (!this->sendKeepAlive()) {
                 std::cerr << "Erro ao enviar keep alive\n";
-                // você pode optar por alterar running = false aqui
+                running = false; // Para o loop se houver erro
             }
         }
     });
@@ -240,12 +245,6 @@ void Server::serverStart() {
         }
 
         // keep-alive == heartbeat
-        
-        // essa lógica de keep-alive não funciona, vai precisar existir uma thread pra isso
-        std::cout << "Enviando Keep Alive \n";
-        if(!sendKeepAlive()) {
-            closed = true;
-        }
     }
 
     running = false;

@@ -16,13 +16,13 @@ class Clock {
     private:
 
         std::unordered_map<std::string, clientInfo>& clients; // key = name ----> value = tempo
+        std::atomic<bool> running;
 
         void _counter();
 
     public:
 
         std::mutex clockMutex;
-        std::atomic<bool> running;
 
         Clock(std::unordered_map<std::string, clientInfo> clients);
         bool HandleNewClient(std::string name, clientInfo client);
