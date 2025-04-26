@@ -8,12 +8,7 @@
 #include <atomic>
 #include <thread>
 #include "Utils.hpp"
-
-
-struct clientInfo {
-    std::string ip;
-    int tempo;
-};
+#include "Clock.hpp"
 
 class Server {
 
@@ -28,6 +23,7 @@ class Server {
         std::string name; // nome do processo na rede
 
         PacketManager packetManager;
+        Clock* clock;
 
         std::mutex sendMutex;
 
@@ -41,8 +37,7 @@ class Server {
         Server(int port, std::string name);
         void serverStart();
         void serverClose();
-
-
+        ~Server();
 };
 
 

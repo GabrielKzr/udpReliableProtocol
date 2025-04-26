@@ -10,8 +10,9 @@ src = [
 	'src/main.cpp', 
     'src/controller/Server.cpp',
 	'src/controller/PacketManager.cpp',
-	'src/controller/MessageTypes.cpp',
-	'src/controller/Utils.cpp'
+	'src/controller/MessageType.cpp',
+	'src/controller/Utils.cpp',
+	'src/controller/Clock.cpp',
 ]
 
 deps = [

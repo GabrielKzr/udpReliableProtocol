@@ -28,6 +28,8 @@ Server::Server(int port, std::string name) : port(port) {
         std::cerr << "Erro ao criar socket!" << std::endl;
         exit(0);
     }
+
+    clock = new Clock(clients);
 }
 
 bool Server::serverInit() {
@@ -94,7 +96,8 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
         case 0x001: {
             
             clientInfo client = {ip, 0}; // Inicializa o clientInfo com o IP e tempo 0
-            clients.insert_or_assign(message->name, client);
+            clock->HandleNewClient(message->name, client); // Adiciona o cliente ao relógio
+            std::cout << "Heartbeat recebido de " << ip << ": " << message->payload << std::endl;
             break;
         }
 
@@ -197,6 +200,7 @@ void Server::serverStart() {
         }
     });
 
+    this->clock->Start(); // Inicia o relógio
 
     // ---------------------------------------
 
@@ -248,4 +252,10 @@ void Server::serverStart() {
     if (keepAliveThread.joinable()) {
         keepAliveThread.join();
     }
+}
+
+Server::~Server() {
+    close(server_socket);
+    delete clock;
+    std::cout << "Servidor fechado." << std::endl;
 }

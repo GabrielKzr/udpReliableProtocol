@@ -6,6 +6,11 @@
 #include <exception>
 #include <string>
 
+struct clientInfo {
+    std::string ip;
+    int tempo;
+};
+
 int asciiStringToInt(char* str);
 
 #endif
