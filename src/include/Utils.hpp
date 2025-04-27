@@ -5,6 +5,8 @@
 
 #include <exception>
 #include <string>
+#include <stdint.h>
+#include <stdexcept>
 
 struct clientInfo {
     std::string ip;
@@ -12,5 +14,6 @@ struct clientInfo {
 };
 
 int asciiStringToInt(char* str);
+void intToLogicVectorLittleEndian(int value, uint8_t* output, int outputSize); 
 
 #endif

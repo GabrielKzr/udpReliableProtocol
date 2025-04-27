@@ -10,6 +10,7 @@
 #include <ifaddrs.h>
 #include "Utils.hpp"
 #include "Clock.hpp"
+#include "Console.hpp"
 
 class Server {
 
@@ -24,8 +25,9 @@ class Server {
         std::string name; // nome do processo na rede
         std::string localIp;
 
-        PacketManager packetManager;
+        PacketManager* packetManager;
         Clock* clock;
+        Console console;
 
         std::mutex sendMutex;
 

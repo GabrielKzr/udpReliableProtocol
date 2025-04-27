@@ -27,6 +27,8 @@ Server::Server(int port, std::string name) : port(port) {
         exit(0);
     }
 
+    packetManager = new PacketManager(this->port);
+
     clock = new Clock(clients);
 }
 
@@ -280,12 +282,39 @@ void Server::serverStart() {
         }
     });
 
-    for(;;) {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        if(!running) {
-            break;
+    while (true)
+    {
+        console.cleanConsole();
+        console.printMenu();
+        auto response = console.handleInput();
+
+        if (response.first == "talk") {
+
+            auto packet = packetManager->buildMessage(response.second.first, response.second.second);
+
+            auto client = this->clock->getClientInfo(response.second.first);
+
+            if(client == nullptr) {
+                std::cout << "Cliente não encontrado.\n";
+                continue;
+            }
+
+            std::lock_guard<std::mutex> lock(sendMutex); // protege o acesso ao socket
+
+            packetManager->sendMessage(packet, client->ip, server_socket);
+
+            delete client; // Libera a memória alocada para clientInfo
         }
+        else if(response.first == "exit") {
+            std::cout << "Saindo do programa...\n";
+            break;
+        } 
+
+        // Aqui você pode adicionar lógica para lidar com a entrada do usuário
+        // e enviar mensagens para os clientes, se necessário.
     }
+
+    std::cout << "Encerrando...\n";
 
     running = false;
     if (keepAliveThread.joinable()) {
@@ -306,5 +335,6 @@ void Server::serverClose() {
 Server::~Server() {
     close(server_socket);
     delete clock;
+    delete packetManager;
     std::cout << "Servidor fechado." << std::endl;
 }

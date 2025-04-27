@@ -26,6 +26,7 @@ class Clock {
 
         Clock(std::unordered_map<std::string, clientInfo>& clients);
         bool HandleNewClient(std::string name, clientInfo client);
+        clientInfo* getClientInfo(std::string name);
         void Start();
         void Stop();
         ~Clock();

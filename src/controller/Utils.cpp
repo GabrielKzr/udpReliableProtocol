@@ -10,3 +10,13 @@ int asciiStringToInt(char* str){
 
     return result;
 }
+
+void intToLogicVectorLittleEndian(int value, uint8_t* output, int outputSize) {
+
+    if(outputSize < 4) {
+        throw std::length_error("Output size is less than 4 bytes");
+    }
+    for (int i = 0; i < 4; ++i) {
+        output[i] = (value >> (i * 8)) & 0xFF;
+    }
+}

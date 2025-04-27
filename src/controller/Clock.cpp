@@ -70,6 +70,25 @@ bool Clock::HandleNewClient(std::string name, clientInfo client) {
     return true;
 }
 
+clientInfo* Clock::getClientInfo(std::string name) {
+
+    
+    std::lock_guard<std::mutex> lock(clockMutex); // Protege o acesso à lista de clientes
+    
+    auto it = clients.find(name);
+    if (it != clients.end()) {
+        
+        clientInfo* client = new clientInfo();
+        
+        client->ip = it->second.ip;
+        client->tempo = it->second.tempo;
+
+        return client; // Retorna o ponteiro para o clientInfo
+    }
+    
+    return nullptr; // Retorna nullptr se não encontrar
+}
+
 Clock::~Clock() {
     Stop(); // Para o relógio
     std::cout << "Destruindo o relógio." << std::endl;

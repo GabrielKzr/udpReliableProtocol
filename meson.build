@@ -17,6 +17,7 @@ src = [
 	'src/controller/MessageType.cpp',
 	'src/controller/Utils.cpp',
 	'src/controller/Clock.cpp',
+	'src/view/Console.cpp',
 ]
 
 deps = [

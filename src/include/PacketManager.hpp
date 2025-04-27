@@ -12,6 +12,7 @@
 #include <algorithm>
 
 #include "MessageType.hpp"
+#include "Utils.hpp"
 
 struct Message {
     Message_t* msg;
@@ -32,17 +33,21 @@ class PacketManager {
 
     private:
     
+        int port;
         Message* actualMessage;
+        int actualSystemId;
 
         // verifica se mensagem atual já foi "acked"
         bool isAcked();
 
     public:
 
-        PacketManager();
-        bool sendMessage(std::string message, int id);
+        PacketManager(int port);
+        bool sendMessage(Message_t packet, std::string ip, int sock);
         bool verifyAck(int ack);  
         void retransmitPacket();
+
+        Message_t buildMessage(std::string name, std::string message);
 };
 
 
