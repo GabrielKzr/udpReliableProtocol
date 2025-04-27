@@ -1,7 +1,7 @@
 #include "Clock.hpp"
 
-Clock::Clock(std::unordered_map<std::string, clientInfo> clients) : clients(clients) {
-    // Construtor da classe Clock
+Clock::Clock(std::unordered_map<std::string, clientInfo>& clients) : clients(clients) {
+
 }
 
 void Clock::Start() {
@@ -24,22 +24,26 @@ void Clock::_counter() {
 
     while (running) {
 
-        for (auto& client : clients) {
+        {
             std::lock_guard<std::mutex> lock(clockMutex); // Protege o acesso à lista de clientes
-            // std::cout << "Contando para o cliente: " << client.first << " com IP: " << client.second.ip << std::endl;
+
+            for (auto it = clients.begin(); it != clients.end(); /*…*/) {
+                if (it->second.tempo >= 10) {
+                    it = clients.erase(it);
+                } else {
+                    ++it->second.tempo;
+
+                    // std::cout << "Cliente: " << it->first << ", Tempo: " << it->second.tempo << std::endl;
+
+                    ++it;
+                }
+            }
             
-            if(client.second.tempo == 10) {
-                clients.erase(client.first);
-                std::cout << "Cliente " << client.first << " removido por timeout." << std::endl;
-            } else {
-                client.second.tempo++;
+            if(clients.empty()) {
+                // std::cout << "Nenhum cliente conectado." << std::endl;
             }
         }
-
-        if(clients.empty()) {
-            std::cout << "Nenhum cliente conectado." << std::endl;
-        }
-
+            
         std::this_thread::sleep_for(std::chrono::seconds(1));
     }
 
@@ -48,8 +52,21 @@ void Clock::_counter() {
 
 bool Clock::HandleNewClient(std::string name, clientInfo client) {
     std::lock_guard<std::mutex> lock(clockMutex); // Protege o acesso à lista de clientes
-    std::cout << "Relógio parado." << std::endl;
-    clients.insert_or_assign(name, client);
+    
+    auto result = clients.insert_or_assign(name, client);
+
+    /*
+    for (const auto& [key, value] : clients) {
+        std::cout << "Cliente: " << key << ", IP: " << value.ip << ", Tempo: " << value.tempo << std::endl;
+    }    
+    // Verifica o resultado da operação
+    if (result.second) {
+        std::cout << "Novo cliente inserido: " << name << " com IP: " << client.ip << std::endl;
+    } else {
+        std::cout << "Cliente existente atualizado: " << name << " com IP: " << client.ip << std::endl;
+    }
+    */
+
     return true;
 }
 

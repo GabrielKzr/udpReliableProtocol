@@ -7,6 +7,7 @@
 #include <mutex>
 #include <atomic>
 #include <thread>
+#include <ifaddrs.h>
 #include "Utils.hpp"
 #include "Clock.hpp"
 
@@ -21,6 +22,7 @@ class Server {
         int port;
     
         std::string name; // nome do processo na rede
+        std::string localIp;
 
         PacketManager packetManager;
         Clock* clock;
@@ -30,7 +32,9 @@ class Server {
         bool sendKeepAlive();
         bool serverInit();
 
-        void handleMessage(Message_t* buffer, sockaddr_in* addr, int receivedBytes);
+        void handleMessage(Message_t* buffer, sockaddr_in* addr, int receivedBytes, std::string ip);
+
+        std::string getLocalIp();
 
     public:
 

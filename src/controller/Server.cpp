@@ -30,6 +30,32 @@ Server::Server(int port, std::string name) : port(port) {
     clock = new Clock(clients);
 }
 
+std::string Server::getLocalIp() {
+    struct ifaddrs *ifaddr, *ifa;
+    char buf[INET_ADDRSTRLEN];
+    std::string ip;
+
+    if (getifaddrs(&ifaddr) == -1) {
+        perror("getifaddrs");
+        return "";
+    }
+
+    for (ifa = ifaddr; ifa; ifa = ifa->ifa_next) {
+        if (ifa->ifa_addr == nullptr) continue;
+        if (ifa->ifa_addr->sa_family == AF_INET) {
+            void* addr = &((struct sockaddr_in*)ifa->ifa_addr)->sin_addr;
+            inet_ntop(AF_INET, addr, buf, INET_ADDRSTRLEN);
+            // ignora loopback
+            if (std::string(buf) != "127.0.0.1") {
+                ip = buf;
+                break;
+            }
+        }
+    }
+    freeifaddrs(ifaddr);
+    return ip;
+}
+
 bool Server::serverInit() {
     // Configurando o endereço do servidor
     struct sockaddr_in endereco_servidor;
@@ -50,6 +76,8 @@ bool Server::serverInit() {
         return false;
     }
 
+    localIp = getLocalIp();
+
     return true;
 }
 
@@ -59,7 +87,7 @@ bool Server::sendKeepAlive() {
     struct sockaddr_in addr;
     std::memset(&addr, 0, sizeof(addr));
     addr.sin_family = AF_INET;
-    addr.sin_port = htons(8080);  // Porta do servidor de escuta
+    addr.sin_port = htons(this->port);  // Porta do servidor de escuta
     addr.sin_addr.s_addr = inet_addr("255.255.255.255");
 
     
@@ -69,8 +97,6 @@ bool Server::sendKeepAlive() {
         return false;
     }
     
-    std::cout << this->name << std::endl;
-
     uint8_t id[4] = {0};
     uint8_t hash[16] = {0};
     uint8_t payload[1430] = {0};
@@ -92,15 +118,14 @@ bool Server::sendKeepAlive() {
     return true;
 }
 
-void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBytes) {
-    std::string ip = inet_ntoa(addr->sin_addr);
-    
+void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBytes, std::string ip) {
     
     switch (message->type) {
 
         case 0x001: {
             
             clientInfo client = {ip, 0}; // Inicializa o clientInfo com o IP e tempo 0
+
             clock->HandleNewClient(message->name, client); // Adiciona o cliente ao relógio
             std::cout << "Heartbeat recebido de " << ip << ": " << message->payload << std::endl;
             break;
@@ -170,6 +195,8 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
     break;
     */
     }
+
+    // std::cout << "Sai do handleMessage\n";
 }
 
 
@@ -180,12 +207,6 @@ void Server::serverStart() {
         exit(0);
     }
     
-    fd_set fd;
-    struct timeval timeout;
-    Message_t message;
-    struct sockaddr_in clientAddr;
-    socklen_t len = sizeof(clientAddr);
-    bool closed = false;
 
     // Se necessário lançar threads, lançar aqui
 
@@ -195,9 +216,8 @@ void Server::serverStart() {
 
     std::thread keepAliveThread([this, &running]() {
         while (running) {
-            std::cout << "Esperando 5 segundos para enviar Keep Alive\n";
             std::this_thread::sleep_for(std::chrono::seconds(5));
-            std::cout << "Enviando Keep Alive\n";
+            // std::cout << "Enviando Keep Alive\n";
             if (!this->sendKeepAlive()) {
                 std::cerr << "Erro ao enviar keep alive\n";
                 running = false; // Para o loop se houver erro
@@ -209,48 +229,78 @@ void Server::serverStart() {
 
     // ---------------------------------------
 
-    while(!closed) {
+    std::thread mainThread([this, &running]() {
 
-        FD_ZERO(&fd);
-        FD_SET(server_socket, &fd);  // Adiciona o socket ao conjunto
+        fd_set fd;
+        struct timeval timeout;
+        Message_t message;
+        struct sockaddr_in clientAddr;
+        socklen_t len = sizeof(clientAddr);
 
-        timeout.tv_sec = 5;   // Tempo de timeout de 5 segundos
-        timeout.tv_usec = 0;   // 0 microsegundos
 
-        int ret = 0;
+        while (running) {
+            FD_ZERO(&fd);
+            FD_SET(server_socket, &fd);  // Adiciona o socket ao conjunto
 
-        while ((ret = select(server_socket + 1, &fd, nullptr, nullptr, &timeout)))
-        {
-            ssize_t receivedBytes = recvfrom(server_socket, &message, sizeof(message) - 1, 0, (sockaddr*)&clientAddr, &len);
+            timeout.tv_sec = 5;   // Tempo de timeout de 5 segundos
+            timeout.tv_usec = 0;   // 0 microsegundos
 
-            if (receivedBytes < 0) {
-                perror("Erro em recv");  // Veja o motivo com perror ou errno
-            } 
-            else if (receivedBytes == 0) {
-                std::cout << "Conexão fechada pelo cliente." << std::endl;
-                closed = true;
-            } 
-            else {
-                // Processa a mensagem recebida
-                std::cout << "Mensagem recebida: " << message.payload << std::endl;
-                this->handleMessage(&message, &clientAddr, receivedBytes);
+            int ret = 0;
+
+            while ((ret = select(server_socket + 1, &fd, nullptr, nullptr, &timeout)))
+            {
+                ssize_t receivedBytes = recvfrom(server_socket, &message, sizeof(message) - 1, 0, (sockaddr*)&clientAddr, &len);
+
+                std::string srcIp = inet_ntoa(clientAddr.sin_addr);
+                if (srcIp == localIp) {
+                    // é o meu próprio broadcast — ignora
+                    continue;
+                }        
+
+                if (receivedBytes < 0) {
+                    perror("Erro em recv");  // Veja o motivo com perror ou errno
+                } 
+                else if (receivedBytes == 0) {
+                    std::cout << "Conexão fechada pelo cliente." << std::endl;
+                    running = false;
+                } 
+                else {
+                    // Processa a mensagem recebida
+                    std::cout << "Mensagem recebida: " << message.payload << std::endl;
+                    this->handleMessage(&message, &clientAddr, receivedBytes, srcIp);
+                }
+
+            
             }
 
-        
+            if(ret < 0) {
+                std::cerr << "Erro ao usar select()" << std::endl;
+                exit(0);
+            }
         }
+    });
 
-        if(ret < 0) {
-            std::cerr << "Erro ao usar select()" << std::endl;
-            exit(0);
+    for(;;) {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        if(!running) {
+            break;
         }
-
-        // keep-alive == heartbeat
     }
 
     running = false;
     if (keepAliveThread.joinable()) {
         keepAliveThread.join();
     }
+    if (mainThread.joinable()) {
+        mainThread.join();
+    }
+    this->serverClose();
+}
+
+void Server::serverClose() {
+    clock->Stop(); // Para o relógio
+    close(server_socket);
+    std::cout << "Servidor fechado." << std::endl;
 }
 
 Server::~Server() {
