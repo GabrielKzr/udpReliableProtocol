@@ -60,9 +60,12 @@ bool Clock::HandleNewClient(std::string name, clientInfo client) {
         std::cout << "Cliente: " << key << ", IP: " << value.ip << ", Tempo: " << value.tempo << std::endl;
     }    
     // Verifica o resultado da operação
+    */
     if (result.second) {
         std::cout << "Novo cliente inserido: " << name << " com IP: " << client.ip << std::endl;
-    } else {
+    } 
+    /*
+    else {
         std::cout << "Cliente existente atualizado: " << name << " com IP: " << client.ip << std::endl;
     }
     */

@@ -129,7 +129,7 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
             clientInfo client = {ip, 0}; // Inicializa o clientInfo com o IP e tempo 0
 
             clock->HandleNewClient(message->name, client); // Adiciona o cliente ao relógio
-            std::cout << "Heartbeat recebido de " << ip << ": " << message->payload << std::endl;
+            // std::cout << "Heartbeat recebido de " << ip << ": " << message->payload << std::endl;
             break;
         }
         
@@ -268,7 +268,6 @@ void Server::serverStart() {
                 } 
                 else {
                     // Processa a mensagem recebida
-                    std::cout << "Mensagem recebida: " << message.payload << std::endl;
                     this->handleMessage(&message, &clientAddr, receivedBytes, srcIp);
                 }
 
@@ -299,9 +298,7 @@ void Server::serverStart() {
                 continue;
             }
 
-            std::lock_guard<std::mutex> lock(sendMutex); // protege o acesso ao socket
-
-            packetManager->sendMessage(packet, client->ip, server_socket);
+            packetManager->sendMessage(packet, client->ip, server_socket, sendMutex);
 
             delete client; // Libera a memória alocada para clientInfo
         }

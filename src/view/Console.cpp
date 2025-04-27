@@ -21,8 +21,8 @@ void Console::cleanConsole() {
 
 void Console::printMenu() {
     std::cout << "Menu:\n";
-    std::cout << "1. Talk: <type> <data> <name>\n";
-    std::cout << "2. File: <type> <path> <name>\n";
+    std::cout << "1. Talk: <type> <name> <data>\n";
+    std::cout << "2. File: <type> <name> <path>\n";
     std::cout << "3. Exit: <type>\n";
 }
 
@@ -47,8 +47,8 @@ std::pair<std::string, std::pair<std::string, std::string>> Console::handleInput
         return std::make_pair("exit", std::make_pair("", ""));
     }
 
-    std::cin >> data;
     std::cin >> name;
+    std::cin >> data;
 
     // Remove espaços nas bordas e converte pra minúsculas
 

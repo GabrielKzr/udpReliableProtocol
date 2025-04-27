@@ -10,6 +10,8 @@
 #include <arpa/inet.h>
 #include <sys/select.h>
 #include <algorithm>
+#include <chrono>
+#include <mutex>
 
 #include "MessageType.hpp"
 #include "Utils.hpp"
@@ -37,15 +39,17 @@ class PacketManager {
         Message* actualMessage;
         int actualSystemId;
 
+        std::timed_mutex ackManagerMutex; 
+
         // verifica se mensagem atual já foi "acked"
         bool isAcked();
 
     public:
 
         PacketManager(int port);
-        bool sendMessage(Message_t packet, std::string ip, int sock);
+        bool sendMessage(Message_t packet, std::string ip, int sock, std::mutex& mtx);
         bool verifyAck(int ack);  
-        void retransmitPacket();
+        void retransmitPacket(int sock, std::mutex& mtx, Message_t packet, struct sockaddr_in addr);
 
         Message_t buildMessage(std::string name, std::string message);
 };
