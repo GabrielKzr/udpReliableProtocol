@@ -91,7 +91,6 @@ bool Server::sendKeepAlive() {
     addr.sin_family = AF_INET;
     addr.sin_port = htons(this->port);  // Porta do servidor de escuta
     addr.sin_addr.s_addr = inet_addr("255.255.255.255");
-
     
     int bc = 1;
     if (setsockopt(this->server_socket, SOL_SOCKET, SO_BROADCAST, &bc, sizeof(bc)) < 0) {
@@ -103,7 +102,7 @@ bool Server::sendKeepAlive() {
     uint8_t hash[16] = {0};
     uint8_t payload[1430] = {0};
     // Enviando o pacote de heartbeat
-    Message_t heartbeat(0x001, id, this->name.c_str(), 0, 0, hash, 0, payload);
+    Message_t heartbeat(0x0001, id, this->name.c_str(), 0, 0, hash, 0, payload, localIp.c_str());
 
     int n = sendto(this->server_socket, &heartbeat, sizeof(heartbeat), 0, (struct sockaddr*)&addr, sizeof(addr));
     if (n < 0) {
@@ -120,19 +119,38 @@ bool Server::sendKeepAlive() {
     return true;
 }
 
-void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBytes, std::string ip) {
-    
+void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBytes) {
+
     switch (message->type) {
 
-        case 0x001: {
+        case 0x0001: {
             
-            clientInfo client = {ip, 0}; // Inicializa o clientInfo com o IP e tempo 0
+            clientInfo client = {message->ip, 0}; // Inicializa o clientInfo com o IP e tempo 0
 
             clock->HandleNewClient(message->name, client); // Adiciona o cliente ao relógio
             // std::cout << "Heartbeat recebido de " << ip << ": " << message->payload << std::endl;
             break;
         }
         
+        case 0x0002: {
+            std::cout << "Recebi mensagem talk de " << message->ip << ": " << message->payload << std::endl;
+
+            if(!clock->containsClient(message->ip)) {
+            
+                auto packet = packetManager->buildNackMessage(message->id, 0x01, localIp);
+
+                packetManager->sendMessage(packet, message->ip, server_socket, sendMutex);
+
+                break;
+            }
+
+                
+            // se não era o ack esperado, só ignora
+
+            break;
+        }
+        
+
         // FAZER CLASSE CLOCK
 
         /*
@@ -268,7 +286,7 @@ void Server::serverStart() {
                 } 
                 else {
                     // Processa a mensagem recebida
-                    this->handleMessage(&message, &clientAddr, receivedBytes, srcIp);
+                    this->handleMessage(&message, &clientAddr, receivedBytes);
                 }
 
             
@@ -289,12 +307,13 @@ void Server::serverStart() {
 
         if (response.first == "talk") {
 
-            auto packet = packetManager->buildMessage(response.second.first, response.second.second);
+            auto packet = packetManager->buildTalkMessage(response.second.second, localIp);
 
             auto client = this->clock->getClientInfo(response.second.first);
 
             if(client == nullptr) {
                 std::cout << "Cliente não encontrado.\n";
+                std::this_thread::sleep_for(std::chrono::seconds(1));
                 continue;
             }
 

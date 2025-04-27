@@ -29,6 +29,7 @@ void Clock::_counter() {
 
             for (auto it = clients.begin(); it != clients.end(); /*…*/) {
                 if (it->second.tempo >= 10) {
+                    std::cout << "Cliente Desconectado: " << it->first << ", Tempo: " << it->second.tempo << std::endl;
                     it = clients.erase(it);
                 } else {
                     ++it->second.tempo;
@@ -74,8 +75,6 @@ bool Clock::HandleNewClient(std::string name, clientInfo client) {
 }
 
 clientInfo* Clock::getClientInfo(std::string name) {
-
-    
     std::lock_guard<std::mutex> lock(clockMutex); // Protege o acesso à lista de clientes
     
     auto it = clients.find(name);
@@ -90,6 +89,18 @@ clientInfo* Clock::getClientInfo(std::string name) {
     }
     
     return nullptr; // Retorna nullptr se não encontrar
+}
+
+bool Clock::containsClient(std::string ip) {
+    std::lock_guard<std::mutex> lock(clockMutex); // Protege o acesso à lista de clientes
+    
+    for (const auto& client : clients) {
+        if (client.second.ip == ip) {
+            return true; // Retorna true se encontrar o cliente
+        }
+    }
+    
+    return false; // Retorna false se não encontrar
 }
 
 Clock::~Clock() {

@@ -15,5 +15,6 @@ struct clientInfo {
 
 int asciiStringToInt(char* str);
 void intToLogicVectorLittleEndian(int value, uint8_t* output, int outputSize); 
+int uint8_to_int(uint8_t bytes[4]);
 
 #endif

@@ -5,21 +5,34 @@ PacketManager::PacketManager(int port) : port(port) {
     ackManagerMutex.lock(); // começa sempre bloqueado
 }
 
-Message_t PacketManager::buildMessage(std::string name, std::string message) {
+Message_t PacketManager::buildTalkMessage(std::string message, std::string localIp) {
     char name_s[20] = {0};  // Array de chars para 'name'
     uint8_t hash[16] = {0};     // Array de hash (16 bytes)
 
-    uint8_t type = 2;  // Tipo de mensagem
+    uint8_t type = 0x002;  // Tipo de mensagem
     uint8_t id[4] = {0}; 
     intToLogicVectorLittleEndian(this->actualSystemId, id, 4);  // Converte ID para little endian
 
-    strncpy(name_s, name.c_str(), sizeof(name_s) - 1); 
-
-    const char* name_as_char = name_s;
+    const char* name = {0};
 
     const uint8_t* payload = reinterpret_cast<const uint8_t*>(message.c_str());
 
-    Message_t msg(type, id, name_as_char, 0, 0, hash, 0, payload);
+    Message_t msg(type, id, name, 0, 0, hash, 0, payload, localIp.c_str());
+
+    return msg; // Se necessário
+}
+
+Message_t PacketManager::buildNackMessage(uint8_t* id, uint8_t reason, std::string localIp) {
+    char name_s[20] = {0};  // Array de chars para 'name'
+    uint8_t hash[16] = {0};     // Array de hash (16 bytes)
+
+    uint8_t type = 0x0007;  // Tipo de mensagem
+
+    const char* name = {0};
+
+    const uint8_t* payload = {0};
+
+    Message_t msg(type, id, name, 0, 0, hash, reason, payload, localIp.c_str());
 
     return msg; // Se necessário
 }
@@ -71,7 +84,9 @@ bool PacketManager::sendMessage(Message_t packet, std::string ip, int sock, std:
             this->retransmitPacket(sock, mtx, packet, addr);
         }
     }
-        
+    
+    actualSystemId++; // depois que a mensagem for "acked", incrementa o ID do sistema
+
     return true; // Retorna true se o envio for bem-sucedido
 }
 
@@ -87,26 +102,31 @@ void PacketManager::retransmitPacket(int sock, std::mutex& mtx, Message_t packet
         std::cerr << "Erro ao retransmitir pacote!" << std::endl;
     } 
 }
+bool PacketManager::verifyAck(uint8_t* ack) {
+        
+    // comparar 2 uint8_t
+    uint8_t* id = this->actualMessage->msg->id;
+    if(std::memcmp(ack, id, 4) != 0) {
+        std::cout << "Ack inválido\n";
+        return false; // Ack inválido
+    }        
+    // se já tinha sido "ackeado", então retorna false (ignore repetitive acks)
+    if(isAcked()) {
+        return false;
+    }
 
-/*
-bool PacketManager::verifyAck(int ack) {
-    
-if(ack == this->actualMessage->id) {
-    
-// se já tinha sido "ackeado", então retorna false (ignore repetitive acks)
-if(isAcked()) {
-    return false;
-}
-
-return true;
+    return true;
 } 
-
-return false;
-}
 
 bool PacketManager::isAcked() {
     return this->actualMessage->acked;
 }
+
+/*
+
+return false;
+}
+
 
 void PacketManager::retransmitPacket() {
     

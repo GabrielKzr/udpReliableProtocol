@@ -34,7 +34,7 @@ class Server {
         bool sendKeepAlive();
         bool serverInit();
 
-        void handleMessage(Message_t* buffer, sockaddr_in* addr, int receivedBytes, std::string ip);
+        void handleMessage(Message_t* buffer, sockaddr_in* addr, int receivedBytes);
 
         std::string getLocalIp();
 

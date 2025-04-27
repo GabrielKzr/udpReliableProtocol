@@ -48,10 +48,12 @@ class PacketManager {
 
         PacketManager(int port);
         bool sendMessage(Message_t packet, std::string ip, int sock, std::mutex& mtx);
-        bool verifyAck(int ack);  
+        void sendAck(Message_t packet, std::string ip, int sock, std::mutex& mtx);
+        bool verifyAck(uint8_t* ack);  
         void retransmitPacket(int sock, std::mutex& mtx, Message_t packet, struct sockaddr_in addr);
 
-        Message_t buildMessage(std::string name, std::string message);
+        Message_t buildTalkMessage(std::string message, std::string localIp);
+        Message_t buildNackMessage(uint8_t* id, uint8_t reason, std::string localIp);
 };
 
 

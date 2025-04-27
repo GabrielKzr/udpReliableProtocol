@@ -12,11 +12,13 @@ Message_t::Message_t() {
     std::memset(payload, 0, sizeof(payload));
 }
 
-Message_t::Message_t(uint8_t type, uint8_t id[4], const char* name, uint8_t length, uint8_t seq, uint8_t hash[16], uint8_t reason, const uint8_t* payload) {
+Message_t::Message_t(uint8_t type, uint8_t id[4], const char* name, uint8_t length, uint8_t seq, uint8_t hash[16], uint8_t reason, const uint8_t* payload, const char* ip) {
     this->type = type;
     std::memcpy(this->id, id, sizeof(this->id));
     std::strncpy(this->name, name, sizeof(this->name) - 1);
     this->name[sizeof(this->name) - 1] = '\0'; // Garante que a string esteja terminada
+    std::strncpy(this->ip, ip, sizeof(this->ip) - 1);
+    this->ip[sizeof(this->ip) - 1] = '\0'; // Garante que a string esteja terminada
     this->length = length;
     this->seq = seq;
     std::memcpy(this->hash, hash, sizeof(this->hash));
