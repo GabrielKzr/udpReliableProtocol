@@ -44,16 +44,19 @@ class PacketManager {
         // verifica se mensagem atual já foi "acked"
         bool isAcked();
 
+
     public:
 
         PacketManager(int port);
         bool sendMessage(Message_t packet, std::string ip, int sock, std::mutex& mtx);
-        void sendAck(Message_t packet, std::string ip, int sock, std::mutex& mtx);
+        void sendMessageWithoutAck(Message_t packet, std::string ip, int sock, std::mutex& mtx);
         bool verifyAck(uint8_t* ack);  
         void retransmitPacket(int sock, std::mutex& mtx, Message_t packet, struct sockaddr_in addr);
+        void handleNack(uint8_t reason);
 
         Message_t buildTalkMessage(std::string message, std::string localIp);
         Message_t buildNackMessage(uint8_t* id, uint8_t reason, std::string localIp);
+        Message_t buildAckMessage(uint8_t* id, std::string localIp);
 };
 
 

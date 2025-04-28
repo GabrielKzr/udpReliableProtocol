@@ -6,14 +6,13 @@ PacketManager::PacketManager(int port) : port(port) {
 }
 
 Message_t PacketManager::buildTalkMessage(std::string message, std::string localIp) {
-    char name_s[20] = {0};  // Array de chars para 'name'
     uint8_t hash[16] = {0};     // Array de hash (16 bytes)
 
     uint8_t type = 0x002;  // Tipo de mensagem
     uint8_t id[4] = {0}; 
     intToLogicVectorLittleEndian(this->actualSystemId, id, 4);  // Converte ID para little endian
 
-    const char* name = {0};
+    const char* name = "";
 
     const uint8_t* payload = reinterpret_cast<const uint8_t*>(message.c_str());
 
@@ -23,21 +22,36 @@ Message_t PacketManager::buildTalkMessage(std::string message, std::string local
 }
 
 Message_t PacketManager::buildNackMessage(uint8_t* id, uint8_t reason, std::string localIp) {
-    char name_s[20] = {0};  // Array de chars para 'name'
     uint8_t hash[16] = {0};     // Array de hash (16 bytes)
 
     uint8_t type = 0x0007;  // Tipo de mensagem
 
-    const char* name = {0};
+    const char* name = "";
 
-    const uint8_t* payload = {0};
+    const uint8_t payload[1430] = {0};
 
     Message_t msg(type, id, name, 0, 0, hash, reason, payload, localIp.c_str());
 
     return msg; // Se necessário
 }
 
+Message_t PacketManager::buildAckMessage(uint8_t* id, std::string localIp) {
+    uint8_t hash[16] = {0};     // Array de hash (16 bytes)
+
+    uint8_t type = 0x0006;  // Tipo de mensagem
+
+    const char* name = "";
+
+    const uint8_t payload[1430] = {0};
+
+    Message_t msg(type, id, name, 0, 0, hash, 0, payload, localIp.c_str());
+
+    return msg; // Se necessário
+}
+
 bool PacketManager::sendMessage(Message_t packet, std::string ip, int sock, std::mutex& mtx) {
+
+    std::cout << "Enviando mensagem...\n";
 
     if(actualMessage != nullptr && !actualMessage->acked) {
         std::cout << "Mensagem anterior não foi 'acked'. Não é possível enviar nova mensagem." << std::endl;
@@ -60,6 +74,8 @@ bool PacketManager::sendMessage(Message_t packet, std::string ip, int sock, std:
     addr.sin_port = htons(this->port);  // Porta do servidor de escuta
     addr.sin_addr.s_addr = inet_addr(ip.c_str()); // IP do cliente
 
+    std::cout << "IP: " << ip << std::endl;
+
     int n;
     {
         std::lock_guard<std::mutex> lock(mtx); // protege o acesso ao socket
@@ -69,6 +85,8 @@ bool PacketManager::sendMessage(Message_t packet, std::string ip, int sock, std:
         std::cerr << "Erro ao enviar pacote!" << std::endl;
         return false;
     }    
+
+    std::cout << "Pacote enviado!\n";
 
     // precisa validar um ack, senão pacote pode só ser perdido
     while (true)
@@ -90,6 +108,28 @@ bool PacketManager::sendMessage(Message_t packet, std::string ip, int sock, std:
     return true; // Retorna true se o envio for bem-sucedido
 }
 
+void PacketManager::sendMessageWithoutAck(Message_t packet, std::string ip, int sock, std::mutex& mtx) {
+    if(sock == -1) {
+        std::cerr << "Socket inválido." << std::endl;
+        return; // Socket inválido
+    }
+
+    struct sockaddr_in addr;
+    std::memset(&addr, 0, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_port = htons(this->port);  // Porta do servidor de escuta
+    addr.sin_addr.s_addr = inet_addr(ip.c_str()); // IP do cliente
+
+    int n;
+    {
+        std::lock_guard<std::mutex> lock(mtx); // protege o acesso ao socket
+        n = sendto(sock, &packet, sizeof(packet), 0, (struct sockaddr*)&addr, sizeof(addr));
+    }
+    if (n < 0) {
+        std::cerr << "Erro ao enviar pacote!" << std::endl;
+    } 
+}
+
 void PacketManager::retransmitPacket(int sock, std::mutex& mtx, Message_t packet, struct sockaddr_in addr) {
     std::cout << "Tentando retransmitir o pacote...\n";
     
@@ -103,7 +143,11 @@ void PacketManager::retransmitPacket(int sock, std::mutex& mtx, Message_t packet
     } 
 }
 bool PacketManager::verifyAck(uint8_t* ack) {
-        
+
+    if(this->actualMessage == nullptr) {
+        return false; // Mensagem atual não existe
+    }
+
     // comparar 2 uint8_t
     uint8_t* id = this->actualMessage->msg->id;
     if(std::memcmp(ack, id, 4) != 0) {
@@ -115,6 +159,9 @@ bool PacketManager::verifyAck(uint8_t* ack) {
         return false;
     }
 
+    actualMessage->acked = true;
+    ackManagerMutex.unlock(); 
+
     return true;
 } 
 
@@ -122,17 +169,18 @@ bool PacketManager::isAcked() {
     return this->actualMessage->acked;
 }
 
-/*
-
-return false;
-}
-
-
-void PacketManager::retransmitPacket() {
+void PacketManager::handleNack(uint8_t reason) {
+ 
+    switch (reason)
+    {
+    case 0x01:
+        std::cout << "NACK recebido: conexão não existe.\n";
+        break;
     
-// lógica para a retransmissão de um pacote
-// mesma coisa da lógica de envio, mas ainda não sei qual a melhor opção
+    default:
+        std::cout << "NACK desconhecido\n";
+    }
+    
+    actualMessage->acked = true; // Marca como "ackeado" para evitar retransmissão
+    ackManagerMutex.unlock(); // Libera o mutex
 }
-*/
-
-

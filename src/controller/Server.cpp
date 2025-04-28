@@ -136,42 +136,26 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
             std::cout << "Recebi mensagem talk de " << message->ip << ": " << message->payload << std::endl;
 
             if(!clock->containsClient(message->ip)) {
-            
+                
+                std::cout << "Cliente não encontrado.\n";
+
                 auto packet = packetManager->buildNackMessage(message->id, 0x01, localIp);
 
-                packetManager->sendMessage(packet, message->ip, server_socket, sendMutex);
+                packetManager->sendMessageWithoutAck(packet, message->ip, server_socket, sendMutex);
 
                 break;
             }
 
-                
-            // se não era o ack esperado, só ignora
+            std::cout << "Verificando se o cliente está no relógio...\n";
+
+            auto packet = packetManager->buildAckMessage(message->id, localIp);
+
+            packetManager->sendMessageWithoutAck(packet, message->ip, server_socket, sendMutex);            
 
             break;
         }
         
-
-        // FAZER CLASSE CLOCK
-
         /*
-        case messageTypes::Type::Talk: {
-            if (receivedBytes < 7) {
-                std::cout << "Talk inválido\n";
-                break;
-            }
-            
-            std::string s_id = std::string(3, 7); // 4 caracteres do ID
-            std::string data = std::string(buffer);
-            
-            std::cout << "Received TALK Data from " << ip << ": " << data << std::endl;
-            
-            std::string msg = std::string(messageTypes::toString(messageTypes::Type::Ack)) + s_id;
-            
-            addr->sin_port = htons(this->port);
-            sendto(server_socket, msg.c_str(), msg.size(), 0, (sockaddr*)&addr, sizeof(*addr));
-            break;
-        }
-        
         case messageTypes::Type::File: {
             // implementar
             break;
@@ -186,37 +170,40 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
             // implementar
             break;
         }
-        
-        case messageTypes::Type::Ack: {
+        */
+       
+        case 0x0006: {
+
+            std::cout << "Recebi ACK de " << message->ip << ": " << message->payload << std::endl;
             
-        if(receivedBytes != 7) {
-            std::cout << "Ack inválido\n";
+            // o correto pra não acontecer nenhum tipo de falha de segurança é fazer a 
+            // verificação do cliente que enviou o ack, então teria q ser alterado em packetManager, e a Message_t seria passada por parâmetro
+            packetManager->verifyAck(message->id);
+
+            break;
+        } 
+        
+        case 0x0007: {
+            std::cout << "Recebi NACK de " << message->ip << ": " << message->payload << std::endl;
+
+            packetManager->handleNack(message->reason);
+            // implementar
+            break;
+        }
+
+        /*
+        case messageTypes::Type::Nack: {
+            // lógica de NACK (futura)
+            break;
         }
         
-        const char* c = buffer + 3; 
-        char substring[4];         
-        
-        std::memcpy(substring, c, 4);
-        
-        int ack = asciiStringToInt(substring);
-        
-        packetManager.verifyAck(ack);
-        
+        default:
+        std::cout << "Tipo de mensagem desconhecido\n";
         break;
-    }
-    
-    case messageTypes::Type::Nack: {
-        // lógica de NACK (futura)
-        break;
-    }
-    
-    default:
-    std::cout << "Tipo de mensagem desconhecido\n";
-    break;
-    */
-    }
+        */
+        }
 
-    // std::cout << "Sai do handleMessage\n";
+        // std::cout << "Sai do handleMessage\n";
 }
 
 
@@ -305,10 +292,12 @@ void Server::serverStart() {
         console.printMenu();
         auto response = console.handleInput();
 
+        
         if (response.first == "talk") {
-
+            
             auto packet = packetManager->buildTalkMessage(response.second.second, localIp);
-
+            
+            std::cout << "aqui\n";
             auto client = this->clock->getClientInfo(response.second.first);
 
             if(client == nullptr) {
@@ -317,11 +306,17 @@ void Server::serverStart() {
                 continue;
             }
 
+            std::cout << "Enviando mensagem para " << client->ip << ": " << response.second.second << std::endl;
             packetManager->sendMessage(packet, client->ip, server_socket, sendMutex);
 
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+
             delete client; // Libera a memória alocada para clientInfo
-        }
-        else if(response.first == "exit") {
+        } else if (response.first == "file") {
+
+
+
+        } else if(response.first == "exit") {
             std::cout << "Saindo do programa...\n";
             break;
         } 
