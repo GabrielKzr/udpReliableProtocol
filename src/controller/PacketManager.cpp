@@ -1,5 +1,5 @@
 #include "../include/PacketManager.hpp"
-PacketManager::PacketManager(int port) : port(port) {
+PacketManager::PacketManager(int port, std::string localName) : port(port), localName(localName) {
     actualMessage = nullptr;
     actualSystemId = 0;
     ackManagerMutex.lock(); // começa sempre bloqueado
@@ -45,6 +45,118 @@ Message_t PacketManager::buildAckMessage(uint8_t* id, std::string localIp) {
     const uint8_t payload[1430] = {0};
 
     Message_t msg(type, id, name, 0, 0, hash, 0, payload, localIp.c_str());
+
+    return msg; // Se necessário
+}
+
+std::vector<Message_t> PacketManager::buildFileMessage(std::string fileContent, std::string localIp) {
+
+    uint8_t length = ceil(fileContent.length() / Message_t::MAX_PAYLOAD_SIZE);
+    
+    std::vector<Message_t> packets(length); // Vetor de pacotes
+
+    std::vector<uint8_t> digest(MD5_DIGEST_LENGTH); // MD5_DIGEST_LENGTH = 16 bytes
+
+    MD5(reinterpret_cast<const uint8_t*>(fileContent.c_str()), fileContent.size(), digest.data());
+
+    if(length < 1) {
+        std::cerr << "Tamanho inválido para mensagem do tipo File." << std::endl;
+        throw std::invalid_argument("Tamanho inválido para mensagem do tipo File.");
+    } else if(length == 1) {
+        
+        packets[0] = buildFileStartMessage(length, fileContent, localIp, &digest);
+
+    } else if(length == 2) {
+
+        packets[0] = buildFileStartMessage(length, fileContent.substr(0, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr);
+        packets[1] = buildFileEndMessage(length, fileContent.substr(Message_t::MAX_PAYLOAD_SIZE), localIp, &digest);
+
+    } else {
+
+        packets[0] = buildFileStartMessage(length, fileContent.substr(0, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr);
+        
+        for(int i = 1; i < length - 1; ++i) {
+            packets[i] = buildFileChunkMessage(length, i, fileContent.substr(i * Message_t::MAX_PAYLOAD_SIZE, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr);
+        }
+
+        packets[length - 1] = buildFileEndMessage(length, fileContent.substr((length - 1) * Message_t::MAX_PAYLOAD_SIZE), localIp, &digest);
+    }
+
+    return packets;
+}
+
+Message_t PacketManager::buildFileStartMessage(uint8_t length, std::string message, std::string localIp, std::vector<uint8_t>* digest) {
+            
+    uint8_t type = 0x0003;  // Tipo de mensagem
+    uint8_t id[4] = {0}; 
+    intToLogicVectorLittleEndian(this->actualSystemId, id, 4);  // Converte ID para little endian
+    
+    const char* name = this->localName.c_str();
+    
+    uint8_t seq = 0; // Sequência inicial
+
+    const uint8_t* payload = reinterpret_cast<const uint8_t*>(message.c_str());
+    
+    uint8_t hash[16] = {0};     
+
+    if(digest->size() == 16) {
+        for(int i = 0; i < 16; ++i) {
+            hash[i] = (*digest)[i];
+        }
+    }
+
+    Message_t msg(type, id, name, length, seq, hash, 0, payload, localIp.c_str());
+
+    return msg; // Se necessário
+}
+
+Message_t PacketManager::buildFileEndMessage(uint8_t length, std::string message, std::string localIp, std::vector<uint8_t>* digest) {
+            
+    uint8_t type = 0x0005;  // Tipo de mensagem
+    uint8_t id[4] = {0}; 
+    intToLogicVectorLittleEndian(this->actualSystemId, id, 4);  // Converte ID para little endian
+    
+    const char* name = this->localName.c_str();
+    
+    uint8_t seq = length - 1;
+
+    const uint8_t* payload= reinterpret_cast<const uint8_t*>(message.c_str());    
+
+    uint8_t hash[16] = {0};     
+
+    if(digest->size() == 16) {
+        for(int i = 0; i < 16; ++i) {
+            hash[i] = (*digest)[i];
+        }
+    } else {
+        // lançar exceção
+        throw std::invalid_argument("Digest inválido.");
+    }
+
+    Message_t msg(type, id, name, length, seq, hash, 0, payload, localIp.c_str());
+
+    return msg; // Se necessário
+}
+
+Message_t PacketManager::buildFileChunkMessage(uint8_t length, uint8_t seq, std::string message, std::string localIp, std::vector<uint8_t>* digest) {
+            
+    uint8_t type = 0x0004;  // Tipo de mensagem
+    uint8_t id[4] = {0}; 
+    intToLogicVectorLittleEndian(this->actualSystemId, id, 4);  // Converte ID para little endian
+    
+    const char* name = this->localName.c_str();
+
+    const uint8_t* payload = reinterpret_cast<const uint8_t*>(message.c_str());
+
+    uint8_t hash[16] = {0};     
+
+    if(digest->size() == 16) {
+        for(int i = 0; i < 16; ++i) {
+            hash[i] = (*digest)[i];
+        }
+    }
+
+    Message_t msg(type, id, name, length, seq, hash, 0, payload, localIp.c_str());
 
     return msg; // Se necessário
 }

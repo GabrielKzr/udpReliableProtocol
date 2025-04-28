@@ -28,3 +28,17 @@ int uint8_to_int(uint8_t bytes[4]) {
     }
     return result;
 }
+
+std::string readFileToString(const std::string& filename) {
+    std::ifstream file(filename);
+
+    if (!file.is_open()) {
+        std::cerr << "Erro ao abrir o arquivo!" << std::endl;
+        return "";
+    }
+
+    std::stringstream buffer;
+    buffer << file.rdbuf(); // lê o conteúdo inteiro para o buffer
+
+    return buffer.str(); // retorna como string
+}

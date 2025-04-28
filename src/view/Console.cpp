@@ -61,7 +61,12 @@ std::pair<std::string, std::pair<std::string, std::string>> Console::handleInput
         return std::make_pair(type, std::make_pair(name, data));
     }
     else if (type == "file") {
+        if(data.size() > 1430) {
+            std::cout << "Mensagem muito longa. O tamanho máximo é 1430 caracteres.\n";
+            return std::make_pair("", std::make_pair("", ""));
+        }
 
+        return std::make_pair(type, std::make_pair(name, data));   
     }
     else {
         std::cout << "Opção inválida: '" << type << "'. Por favor escolha Talk, File ou Sair.\n";

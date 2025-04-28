@@ -25,3 +25,20 @@ Message_t::Message_t(uint8_t type, uint8_t id[4], const char* name, uint8_t leng
     this->reason = reason;
     std::memcpy(this->payload, payload, sizeof(this->payload));
 }
+
+std::string Message_t::toString() const {
+    std::string result;
+    result += "Type: " + std::to_string(type) + "\n";
+    result += "ID: " + std::to_string(id[0]) + std::to_string(id[1]) + std::to_string(id[2]) + std::to_string(id[3]) + "\n";
+    result += "Name: " + std::string(name) + "\n";
+    result += "Length: " + std::to_string(length) + "\n";
+    result += "Seq: " + std::to_string(seq) + "\n";
+    result += "Hash: ";
+    for (int i = 0; i < 16; ++i) {
+        result += std::to_string(hash[i]);
+    }
+    result += "\nReason: " + std::to_string(reason) + "\n";
+    result += "IP: " + std::string(ip) + "\n";
+    result += "Payload: " + std::string(payload, payload + MAX_PAYLOAD_SIZE) + "\n";
+    return result;
+}

@@ -8,6 +8,7 @@
 #include <atomic>
 #include <thread>
 #include <ifaddrs.h>
+
 #include "Utils.hpp"
 #include "Clock.hpp"
 #include "Console.hpp"

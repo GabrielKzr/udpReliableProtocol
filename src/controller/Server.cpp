@@ -27,7 +27,7 @@ Server::Server(int port, std::string name) : port(port) {
         exit(0);
     }
 
-    packetManager = new PacketManager(this->port);
+    packetManager = new PacketManager(this->port, this->name);
 
     clock = new Clock(clients);
 }
@@ -192,11 +192,6 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
         }
 
         /*
-        case messageTypes::Type::Nack: {
-            // lógica de NACK (futura)
-            break;
-        }
-        
         default:
         std::cout << "Tipo de mensagem desconhecido\n";
         break;
@@ -288,6 +283,8 @@ void Server::serverStart() {
 
     while (true)
     {
+        std::this_thread::sleep_for(std::chrono::seconds(1));
+        
         console.cleanConsole();
         console.printMenu();
         auto response = console.handleInput();
@@ -297,12 +294,12 @@ void Server::serverStart() {
             
             auto packet = packetManager->buildTalkMessage(response.second.second, localIp);
             
-            std::cout << "aqui\n";
             auto client = this->clock->getClientInfo(response.second.first);
 
             if(client == nullptr) {
                 std::cout << "Cliente não encontrado.\n";
                 std::this_thread::sleep_for(std::chrono::seconds(1));
+                delete client; 
                 continue;
             }
 
@@ -316,10 +313,63 @@ void Server::serverStart() {
 
 
 
+            auto client = this->clock->getClientInfo(response.second.first);
+
+            /*
+            if(client == nullptr) {
+                std::cout << "Cliente não encontrado.\n";
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                delete client; 
+                continue;
+            }
+            */
+
+            std::string fileContent = readFileToString(response.second.second);
+            if (fileContent.empty()) {
+                std::cerr << "Erro ao ler o arquivo ou arquivo indisponível." << std::endl;
+                delete client;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            }
+
+            std::cout << "ajustando pacotes... (vai dar seg fault, certeza)\n";
+            std::vector<Message_t> packets = packetManager->buildFileMessage(fileContent, localIp);
+
+            if (packets.size() == 0) {
+                std::cerr << "Erro ao construir pacotes de arquivo." << std::endl;
+                delete client;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            }
+
+            if(packets.size() != ceil(fileContent.length() / Message_t::MAX_PAYLOAD_SIZE)) {
+                std::cerr << "Erro ao construir pacotes de arquivo." << std::endl;
+                delete client;
+                std::this_thread::sleep_for(std::chrono::seconds(1));
+                continue;
+            }
+
+            std::cout << "Pacotes construídos com sucesso. Enviando...\n";
+            for(size_t i = 0; i < packets.size(); ++i) {
+                std::cout << "Enviando pacote " << i + 1 << " de " << packets.size() << std::endl;
+                std::cout << packets[i].toString() << std::endl;
+
+                std::cout << std::endl << std::endl;
+                packetManager->sendMessage(packets[i], client->ip, server_socket, sendMutex);
+            }
+
+            getchar(); // Espera o usuário pressionar Enter
+            // std::this_thread::sleep_for(std::chrono::seconds(1));
+
+            delete client; 
+
         } else if(response.first == "exit") {
             std::cout << "Saindo do programa...\n";
             break;
-        } 
+        } else {
+            std::cout << "Comando inválido. Tente novamente.\n";
+            std::this_thread::sleep_for(std::chrono::seconds(1));
+        }
 
         // Aqui você pode adicionar lógica para lidar com a entrada do usuário
         // e enviar mensagens para os clientes, se necessário.
