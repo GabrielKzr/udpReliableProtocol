@@ -12,7 +12,7 @@ Message_t::Message_t() {
     std::memset(payload, 0, sizeof(payload));
 }
 
-Message_t::Message_t(uint8_t type, uint8_t id[4], const char* name, uint8_t length, uint8_t seq, uint8_t hash[16], uint8_t reason, const uint8_t* payload, const char* ip) {
+Message_t::Message_t(uint8_t type, uint8_t id[4], const char* name, uint8_t length, uint8_t seq, uint8_t hash[16], uint8_t reason, const uint8_t* payload, const char* ip, uint16_t payloadSize) {
     this->type = type;
     std::memcpy(this->id, id, sizeof(this->id));
     std::strncpy(this->name, name, sizeof(this->name) - 1);
@@ -24,6 +24,7 @@ Message_t::Message_t(uint8_t type, uint8_t id[4], const char* name, uint8_t leng
     std::memcpy(this->hash, hash, sizeof(this->hash));
     this->reason = reason;
     std::memcpy(this->payload, payload, sizeof(this->payload));
+    this->payloadSize = payloadSize;
 }
 
 std::string Message_t::toString() const {

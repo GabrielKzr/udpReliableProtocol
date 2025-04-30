@@ -103,6 +103,71 @@ bool Clock::containsClient(std::string ip) {
     return false; // Retorna false se não encontrar
 }
 
+bool Clock::addClientFile(Message_t packet) {
+
+    if(clients.find(packet.name) == clients.end()) {
+        return false;
+    }
+
+    auto it = filesManagement.find(packet.name);
+
+    if(it != filesManagement.end()) {
+        it->second.push_back(packet);
+    } else {
+        filesManagement.insert(std::make_pair(packet.name, std::vector<Message_t>{packet}));
+    }
+
+    if(filesManagement[packet.name].size() == packet.length) {
+        _handleCompleted(packet.name);
+    }
+
+    return true;
+}
+
+void Clock::_handleCompleted(std::string name) {
+
+    std::vector<Message_t> packets = filesManagement[name];
+
+    for (size_t i = 0; i < packets.size(); i++) {
+        for (size_t j = 0; j < packets.size() - i - 1; j++) {
+            if (packets[j].seq > packets[j + 1].seq) {
+                std::swap(packets[j], packets[j + 1]);
+            }
+        }
+    }
+
+    _createFile(packets);
+
+    // ---------------------- VERIFICAR A HASH !!!!!!!!!!!!!!!!!!!!!!!!!!!! ------------------------
+
+
+    filesManagement.erase(name);
+
+    return;
+}
+
+void Clock::_createFile(std::vector<Message_t> packets) {
+    std::string filename = "./exampleFiles/receivedFiles/file" + std::to_string(fileCounter++) + ".txt";
+
+    std::ofstream outfile(filename); // modo texto
+
+    if (!outfile.is_open()) {
+        std::cerr << "Erro ao criar o arquivo " << filename << std::endl;
+        return;
+    }
+
+    for (size_t i = 0; i < packets.size(); ++i) {
+        const auto& packet = packets[i];
+
+        std::string data(reinterpret_cast<const char*>(packet.payload), packet.payloadSize);
+
+        outfile << data;
+    }
+
+    outfile.close();
+    std::cout << "Arquivo criado: " << filename << std::endl;
+}
+
 Clock::~Clock() {
     Stop(); // Para o relógio
     std::cout << "Destruindo o relógio." << std::endl;

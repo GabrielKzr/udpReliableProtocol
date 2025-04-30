@@ -102,7 +102,7 @@ bool Server::sendKeepAlive() {
     uint8_t hash[16] = {0};
     uint8_t payload[1430] = {0};
     // Enviando o pacote de heartbeat
-    Message_t heartbeat(0x0001, id, this->name.c_str(), 0, 0, hash, 0, payload, localIp.c_str());
+    Message_t heartbeat(0x0001, id, this->name.c_str(), 0, 0, hash, 0, payload, localIp.c_str(), 0);
 
     int n = sendto(this->server_socket, &heartbeat, sizeof(heartbeat), 0, (struct sockaddr*)&addr, sizeof(addr));
     if (n < 0) {
@@ -146,7 +146,7 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
                 break;
             }
 
-            std::cout << "Verificando se o cliente está no relógio...\n";
+            // std::cout << "Verificando se o cliente está no relógio...\n";
 
             auto packet = packetManager->buildAckMessage(message->id, localIp);
 
@@ -155,23 +155,28 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
             break;
         }
         
-        /*
-        case messageTypes::Type::File: {
-            // implementar
+        case 0x0003 ... 0x0005: {
+
+            if(!this->clock->addClientFile(*message)) {
+                
+                std::cout << "Cliente não encontrado.\n";
+
+                auto packet = packetManager->buildNackMessage(message->id, 0x02, localIp);
+
+                packetManager->sendMessageWithoutAck(packet, message->ip, server_socket, sendMutex);
+
+                break;
+
+            } 
+
+            auto packet = packetManager->buildAckMessage(message->id, localIp);
+
+            packetManager->sendMessageWithoutAck(packet, message->ip, server_socket, sendMutex);   
+
             break;
+
         }
-        
-        case messageTypes::Type::Chunk: {
-            // implementar
-            break;
-        }
-        
-        case messageTypes::Type::End: {
-            // implementar
-            break;
-        }
-        */
-       
+
         case 0x0006: {
 
             std::cout << "Recebi ACK de " << message->ip << ": " << message->payload << std::endl;
@@ -191,14 +196,10 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
             break;
         }
 
-        /*
         default:
-        std::cout << "Tipo de mensagem desconhecido\n";
-        break;
-        */
+            std::cout << "Tipo de mensagem desconhecido\n";
+            break;
         }
-
-        // std::cout << "Sai do handleMessage\n";
 }
 
 
@@ -282,9 +283,7 @@ void Server::serverStart() {
     });
 
     while (true)
-    {
-        std::this_thread::sleep_for(std::chrono::seconds(1));
-        
+    {       
         console.cleanConsole();
         console.printMenu();
         auto response = console.handleInput();
@@ -325,6 +324,7 @@ void Server::serverStart() {
             */
 
             std::string fileContent = readFileToString(response.second.second);
+
             if (fileContent.empty()) {
                 std::cerr << "Erro ao ler o arquivo ou arquivo indisponível." << std::endl;
                 delete client;
@@ -342,7 +342,7 @@ void Server::serverStart() {
                 continue;
             }
 
-            if(packets.size() != ceil(fileContent.length() / Message_t::MAX_PAYLOAD_SIZE)) {
+            if(packets.size() != ceil((float)fileContent.length() / (float)Message_t::MAX_PAYLOAD_SIZE)) {
                 std::cerr << "Erro ao construir pacotes de arquivo." << std::endl;
                 delete client;
                 std::this_thread::sleep_for(std::chrono::seconds(1));
@@ -351,15 +351,9 @@ void Server::serverStart() {
 
             std::cout << "Pacotes construídos com sucesso. Enviando...\n";
             for(size_t i = 0; i < packets.size(); ++i) {
-                std::cout << "Enviando pacote " << i + 1 << " de " << packets.size() << std::endl;
-                std::cout << packets[i].toString() << std::endl;
 
-                std::cout << std::endl << std::endl;
                 packetManager->sendMessage(packets[i], client->ip, server_socket, sendMutex);
             }
-
-            getchar(); // Espera o usuário pressionar Enter
-            // std::this_thread::sleep_for(std::chrono::seconds(1));
 
             delete client; 
 
