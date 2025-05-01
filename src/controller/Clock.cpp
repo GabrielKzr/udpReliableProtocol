@@ -105,28 +105,43 @@ bool Clock::containsClient(std::string ip) {
 
 bool Clock::addClientFile(Message_t packet) {
 
+    /* // não bloqueia, mesmo não estando na lista de clientes
     if(clients.find(packet.name) == clients.end()) {
         return false;
     }
+    */
 
     auto it = filesManagement.find(packet.name);
 
     if(it != filesManagement.end()) {
+
+        for(auto& packets : it->second) { // tratamento de pacotes duplicados
+            if(packets.seq == packet.seq) {
+                std::cout << "Pacote já recebido: " << packet.seq << std::endl;
+                return false; // Pacote já recebido
+            }
+        }
+
         it->second.push_back(packet);
     } else {
         filesManagement.insert(std::make_pair(packet.name, std::vector<Message_t>{packet}));
     }
 
     if(filesManagement[packet.name].size() == packet.length) {
-        _handleCompleted(packet.name);
+        if(!_handleCompleted(packet.name))
+            return false;
     }
+
 
     return true;
 }
 
-void Clock::_handleCompleted(std::string name) {
+bool Clock::_handleCompleted(std::string name) {
 
     std::vector<Message_t> packets = filesManagement[name];
+    std::stringstream ss;
+    std::string data;
+    std::vector<uint8_t> digest(MD5_DIGEST_LENGTH); // MD5_DIGEST_LENGTH = 16 bytes
 
     for (size_t i = 0; i < packets.size(); i++) {
         for (size_t j = 0; j < packets.size() - i - 1; j++) {
@@ -136,14 +151,28 @@ void Clock::_handleCompleted(std::string name) {
         }
     }
 
-    _createFile(packets);
+    for(size_t j = 0; j < packets.size(); j++){
+        ss << packets[j].payload;
+    }
 
-    // ---------------------- VERIFICAR A HASH !!!!!!!!!!!!!!!!!!!!!!!!!!!! ------------------------
+    data = ss.str();
+    
+    MD5(reinterpret_cast<const uint8_t*>(data.c_str()), data.size(), digest.data());
+
+    for(size_t j = 0; j < 16; j++){
+        if (packets[packets.size()-1].hash[j] != digest[j]){
+            return false;
+        }
+    }
+
+    // std::cout << "PAçoca\n";
+
+    _createFile(packets);
 
 
     filesManagement.erase(name);
 
-    return;
+    return true;
 }
 
 void Clock::_createFile(std::vector<Message_t> packets) {
@@ -166,6 +195,19 @@ void Clock::_createFile(std::vector<Message_t> packets) {
 
     outfile.close();
     std::cout << "Arquivo criado: " << filename << std::endl;
+}
+
+void Clock::clientsToString() {
+    std::lock_guard<std::mutex> lock(clockMutex); // Protege o acesso à lista de clientes
+    
+    if(clients.empty()) {
+        std::cout << "Nenhum cliente conectado." << std::endl;
+        return;
+    }
+
+    for (const auto& client : clients) {
+        std::cout << "Cliente: " << client.first << ", IP: " << client.second.ip << ", Tempo: " << client.second.tempo << ", Port: " << client.second.port << std::endl;
+    }
 }
 
 Clock::~Clock() {

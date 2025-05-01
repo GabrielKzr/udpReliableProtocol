@@ -125,7 +125,7 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
 
         case 0x0001: {
             
-            clientInfo client = {message->ip, 0}; // Inicializa o clientInfo com o IP e tempo 0
+            clientInfo client = {message->ip, 0, ntohs(addr->sin_port)}; // Converte para int}; // Inicializa o clientInfo com o IP e tempo 0
 
             clock->HandleNewClient(message->name, client); // Adiciona o cliente ao relógio
             // std::cout << "Heartbeat recebido de " << ip << ": " << message->payload << std::endl;
@@ -168,7 +168,7 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
                 break;
 
             } 
-
+             
             auto packet = packetManager->buildAckMessage(message->id, localIp);
 
             packetManager->sendMessageWithoutAck(packet, message->ip, server_socket, sendMutex);   
@@ -357,6 +357,11 @@ void Server::serverStart() {
 
             delete client; 
 
+        } else if (response.first == "devices") {
+            std::cout << "Dispositivos conectados:\n";
+            this->clock->clientsToString();
+            std::cin.clear();
+            getchar();
         } else if(response.first == "exit") {
             std::cout << "Saindo do programa...\n";
             break;

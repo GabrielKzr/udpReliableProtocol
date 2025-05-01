@@ -23,56 +23,45 @@ void Console::printMenu() {
     std::cout << "Menu:\n";
     std::cout << "1. Talk: <type> <name> <data>\n";
     std::cout << "2. File: <type> <name> <path>\n";
-    std::cout << "3. Exit: <type>\n";
+    std::cout << "3. Devices: <type>\n";
+    std::cout << "4. Exit: <type>\n";
 }
 
+
 std::pair<std::string, std::pair<std::string, std::string>> Console::handleInput() {
+    std::cin.clear();
+    // std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // limpa lixo anterior
 
-    std::string type;
-    std::string data;
-    std::string name;
+    std::string linha;
+    std::getline(std::cin, linha);
 
-    std::cout << "Digite o tipo de mensagem: " << std::endl;
-    std::cin >> std::ws; 
+    std::istringstream iss(linha);
+    std::string type, name, data;
 
-    std::cin >> type;
+    iss >> type >> name;
+    std::getline(iss, data); // pega o resto da linha como mensagem
+    data = trim(data);       // remove espaços nas bordas, se necessário
 
-    type = toLower(trim(type));
+    type = toLower(type);
 
     if (type == "1")        type = "talk";
     else if (type == "2")   type = "file";
-    else if (type == "3")   type = "exit";
+    else if (type == "3")   type = "devices";
+    else if (type == "4")   type = "exit";
 
-    if (type == "exit") {
-        return std::make_pair("exit", std::make_pair("", ""));
+    if (type == "exit" || type == "devices") {
+        return std::make_pair(type, std::make_pair("", ""));
     }
 
-    std::cin >> name;
-    std::cin >> data;
+    if (data.size() > 1430) {
+        std::cout << "Mensagem muito longa. O tamanho máximo é 1430 caracteres.\n";
+        return std::make_pair("", std::make_pair("", ""));
+    }
 
-    // Remove espaços nas bordas e converte pra minúsculas
-
-    if (type == "talk") {
-        if(data.size() > 1430) {
-            std::cout << "Mensagem muito longa. O tamanho máximo é 1430 caracteres.\n";
-            return std::make_pair("", std::make_pair("", ""));
-        }
-
+    if (type == "talk" || type == "file") {
         return std::make_pair(type, std::make_pair(name, data));
+    } else {
+        std::cout << "Opção inválida: '" << type << "'. Por favor escolha Talk, File ou Exit.\n";
+        return std::make_pair("", std::make_pair("", ""));
     }
-    else if (type == "file") {
-        if(data.size() > 1430) {
-            std::cout << "Mensagem muito longa. O tamanho máximo é 1430 caracteres.\n";
-            return std::make_pair("", std::make_pair("", ""));
-        }
-
-        return std::make_pair(type, std::make_pair(name, data));   
-    }
-    else {
-        std::cout << "Opção inválida: '" << type << "'. Por favor escolha Talk, File ou Sair.\n";
-    }
-    
-    std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n'); // Limpa o buffer de entrada   
-
-    return std::make_pair("", std::make_pair("", ""));
 }

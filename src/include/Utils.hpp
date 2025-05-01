@@ -14,6 +14,7 @@
 struct clientInfo {
     std::string ip;
     int tempo;
+    int port;
 };
 
 int asciiStringToInt(char* str);

@@ -10,8 +10,11 @@
 #include <thread>
 #include <chrono>
 #include <atomic>
+#include <openssl/md5.h>
+#include <string>
 #include <vector>
 #include "MessageType.hpp"
+#include <sstream>
 
 class Clock {
 
@@ -24,7 +27,7 @@ class Clock {
         std::atomic<bool> running;
 
         void _createFile(std::vector<Message_t> packets);
-        void _handleCompleted(std::string name);
+        bool _handleCompleted(std::string name);
         void _counter();
 
     public:
@@ -39,6 +42,7 @@ class Clock {
         bool containsClient(std::string ip);
         void Start();
         void Stop();
+        void clientsToString();
         ~Clock();
 };
 

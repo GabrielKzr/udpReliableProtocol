@@ -63,6 +63,7 @@ std::vector<Message_t> PacketManager::buildFileMessage(std::string fileContent, 
 
     MD5(reinterpret_cast<const uint8_t*>(fileContent.c_str()), fileContent.size(), digest.data());
 
+    
     if(length < 1) {
         std::cerr << "Tamanho inválido para mensagem do tipo File." << std::endl;
         throw std::invalid_argument("Tamanho inválido para mensagem do tipo File.");
@@ -247,7 +248,7 @@ bool PacketManager::sendMessage(Message_t packet, std::string ip, int sock, std:
     // precisa validar um ack, senão pacote pode só ser perdido
     while (true)
     {        
-        if (ackManagerMutex.try_lock_for(std::chrono::seconds(5))) {
+        if (ackManagerMutex.try_lock_for(std::chrono::seconds(1))) {
             std::cout << "Recebi o ack!\n";            
             delete msg;
             actualMessage = nullptr; // Limpa a mensagem atual
