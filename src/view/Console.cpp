@@ -53,8 +53,8 @@ std::pair<std::string, std::pair<std::string, std::string>> Console::handleInput
         return std::make_pair(type, std::make_pair("", ""));
     }
 
-    if (data.size() > 1430) {
-        std::cout << "Mensagem muito longa. O tamanho máximo é 1430 caracteres.\n";
+    if (data.size() > 1410) {
+        std::cout << "Mensagem muito longa. O tamanho máximo é 1410 caracteres.\n";
         return std::make_pair("", std::make_pair("", ""));
     }
 

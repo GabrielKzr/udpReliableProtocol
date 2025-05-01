@@ -18,7 +18,9 @@ Message_t PacketManager::buildTalkMessage(std::string message, std::string local
 
     uint16_t payloadSize = message.size();
 
-    Message_t msg(type, id, name, 0, 0, hash, 0, payload, localIp.c_str(), payloadSize);
+    char fileName[20] = {0}; // nome do arquivo
+
+    Message_t msg(type, id, name, 0, 0, hash, 0, payload, localIp.c_str(), payloadSize, fileName);
 
     return msg; // Se necessário
 }
@@ -30,9 +32,11 @@ Message_t PacketManager::buildNackMessage(uint8_t* id, uint8_t reason, std::stri
 
     const char* name = "";
 
-    const uint8_t payload[1430] = {0};
+    const uint8_t payload[1410] = {0};
 
-    Message_t msg(type, id, name, 0, 0, hash, reason, payload, localIp.c_str(), 0);
+    char fileName[20] = {0}; // nome do arquivo
+
+    Message_t msg(type, id, name, 0, 0, hash, reason, payload, localIp.c_str(), 0, fileName);
 
     return msg; // Se necessário
 }
@@ -44,14 +48,16 @@ Message_t PacketManager::buildAckMessage(uint8_t* id, std::string localIp) {
 
     const char* name = "";
 
-    const uint8_t payload[1430] = {0};
+    const uint8_t payload[1410] = {0};
 
-    Message_t msg(type, id, name, 0, 0, hash, 0, payload, localIp.c_str(), 0);
+    char fileName[20] = {0}; // nome do arquivo
+
+    Message_t msg(type, id, name, 0, 0, hash, 0, payload, localIp.c_str(), 0, fileName);
 
     return msg; // Se necessário
 }
 
-std::vector<Message_t> PacketManager::buildFileMessage(std::string fileContent, std::string localIp) {
+std::vector<Message_t> PacketManager::buildFileMessage(std::string fileContent, std::string localIp, std::string fileName) {
 
     uint8_t length = ceil((float)fileContent.size() / (float)Message_t::MAX_PAYLOAD_SIZE);
 
@@ -69,13 +75,13 @@ std::vector<Message_t> PacketManager::buildFileMessage(std::string fileContent, 
         throw std::invalid_argument("Tamanho inválido para mensagem do tipo File.");
     } else if(length == 1) {
         
-        packets[0] = buildFileStartMessage(length, fileContent, localIp, &digest);
+        packets[0] = buildFileStartMessage(length, fileContent, localIp, &digest, fileName);
 
     } else if(length == 2) {
 
         std::cout << "Caí aqui\n";
 
-        packets[0] = buildFileStartMessage(length, fileContent.substr(0, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr);
+        packets[0] = buildFileStartMessage(length, fileContent.substr(0, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr, fileName);
 
         std::cout << "montei pacote start\n";
 
@@ -83,7 +89,7 @@ std::vector<Message_t> PacketManager::buildFileMessage(std::string fileContent, 
 
     } else {
 
-        packets[0] = buildFileStartMessage(length, fileContent.substr(0, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr);
+        packets[0] = buildFileStartMessage(length, fileContent.substr(0, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr, fileName);
         
         for(int i = 1; i < length - 1; ++i) {
             packets[i] = buildFileChunkMessage(length, i, fileContent.substr(i * Message_t::MAX_PAYLOAD_SIZE, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr);
@@ -95,13 +101,14 @@ std::vector<Message_t> PacketManager::buildFileMessage(std::string fileContent, 
     return packets;
 }
 
-Message_t PacketManager::buildFileStartMessage(uint8_t length, std::string message, std::string localIp, std::vector<uint8_t>* digest) {
+Message_t PacketManager::buildFileStartMessage(uint8_t length, std::string message, std::string localIp, std::vector<uint8_t>* digest, std::string fileName) {
             
     uint8_t type = 0x0003;  // Tipo de mensagem
     uint8_t id[4] = {0}; 
     intToLogicVectorLittleEndian(this->actualSystemId, id, 4);  // Converte ID para little endian
     
     const char* name = this->localName.c_str();
+    const char* fileNameCStr = fileName.c_str();
     
     uint8_t seq = 0; // Sequência inicial
 
@@ -127,7 +134,7 @@ Message_t PacketManager::buildFileStartMessage(uint8_t length, std::string messa
 
     uint16_t payloadSize = message.size();
 
-    Message_t msg(type, id, name, length, seq, hash, 0, payload, localIp.c_str(), payloadSize);
+    Message_t msg(type, id, name, length, seq, hash, 0, payload, localIp.c_str(), payloadSize, fileNameCStr);
 
     return msg; // Se necessário
 }
@@ -167,7 +174,9 @@ Message_t PacketManager::buildFileEndMessage(uint8_t length, std::string message
 
     uint16_t payloadSize = message.size();
 
-    Message_t msg(type, id, name, length, seq, hash, 0, payload, localIp.c_str(), payloadSize);
+    char fileName[20] = {0}; // nome do arquivo
+
+    Message_t msg(type, id, name, length, seq, hash, 0, payload, localIp.c_str(), payloadSize, fileName);
 
     return msg; // Se necessário
 }
@@ -179,6 +188,7 @@ Message_t PacketManager::buildFileChunkMessage(uint8_t length, uint8_t seq, std:
     intToLogicVectorLittleEndian(this->actualSystemId, id, 4);  // Converte ID para little endian
     
     const char* name = this->localName.c_str();
+    char fileName[20] = {0}; // nome do arquivo
 
     uint8_t payload[Message_t::MAX_PAYLOAD_SIZE] = {0}; // zera o buffer
     
@@ -199,9 +209,11 @@ Message_t PacketManager::buildFileChunkMessage(uint8_t length, uint8_t seq, std:
         }
     }
 
+
+
     uint16_t payloadSize = message.size();
 
-    Message_t msg(type, id, name, length, seq, hash, 0, payload, localIp.c_str(), payloadSize);
+    Message_t msg(type, id, name, length, seq, hash, 0, payload, localIp.c_str(), payloadSize, fileName);
 
     return msg; // Se necessário
 }

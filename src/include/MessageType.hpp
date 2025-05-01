@@ -11,13 +11,14 @@ class Message_t {
 
     public:
 
-        static const int MAX_PAYLOAD_SIZE = 1430; // Tamanho máximo do payload
+        static const int MAX_PAYLOAD_SIZE = 1410; // Tamanho máximo do payload
 
         // ------ Header  ------
 
         uint8_t type; 
         uint8_t id[4];  
         char name[20];
+        char fileName[20]; // nome do arquivo
         uint8_t length;
         uint8_t seq;
         uint8_t hash[16]; // hash MD5 de 128 bits
@@ -31,7 +32,7 @@ class Message_t {
         uint8_t payload[MAX_PAYLOAD_SIZE + 1]; // 1450 bytes de payload
 
         Message_t();    
-        Message_t(uint8_t type, uint8_t id[4], const char* name, uint8_t length, uint8_t seq, uint8_t hash[16], uint8_t reason, const uint8_t* payload, const char* ip, uint16_t payloadSize);    
+        Message_t(uint8_t type, uint8_t id[4], const char* name, uint8_t length, uint8_t seq, uint8_t hash[16], uint8_t reason, const uint8_t* payload, const char* ip, uint16_t payloadSize, const char* fileName);    
         std::string toString() const; // Converte a mensagem para string
 };
 #pragma pack(pop)

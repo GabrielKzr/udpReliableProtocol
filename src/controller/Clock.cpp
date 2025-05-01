@@ -176,7 +176,7 @@ bool Clock::_handleCompleted(std::string name) {
 }
 
 void Clock::_createFile(std::vector<Message_t> packets) {
-    std::string filename = "./exampleFiles/receivedFiles/file" + std::to_string(fileCounter++) + ".txt";
+    std::string filename = "./exampleFiles/receivedFiles/" + std::string(packets[0].fileName);
 
     std::ofstream outfile(filename); // modo texto
 

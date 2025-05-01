@@ -100,9 +100,10 @@ bool Server::sendKeepAlive() {
     
     uint8_t id[4] = {0};
     uint8_t hash[16] = {0};
-    uint8_t payload[1430] = {0};
+    uint8_t payload[1410] = {0};
+    char fileName[20] = {0}; // nome do arquivo
     // Enviando o pacote de heartbeat
-    Message_t heartbeat(0x0001, id, this->name.c_str(), 0, 0, hash, 0, payload, localIp.c_str(), 0);
+    Message_t heartbeat(0x0001, id, this->name.c_str(), 0, 0, hash, 0, payload, localIp.c_str(), 0, fileName);
 
     int n = sendto(this->server_socket, &heartbeat, sizeof(heartbeat), 0, (struct sockaddr*)&addr, sizeof(addr));
     if (n < 0) {
@@ -134,7 +135,9 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
         
         case 0x0002: {
             std::cout << "Recebi mensagem talk de " << message->ip << ": " << message->payload << std::endl;
-
+            std::cout << "Id da mensagem: " << uint8_to_int(message->id) << std::endl;
+            
+            /* // a princípio não precisa disso, mas se quiser pode fazer (mandar NACK se dispositivo não existe na lista de clientes) 
             if(!clock->containsClient(message->ip)) {
                 
                 std::cout << "Cliente não encontrado.\n";
@@ -145,6 +148,7 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
 
                 break;
             }
+            */
 
             // std::cout << "Verificando se o cliente está no relógio...\n";
 
@@ -332,8 +336,10 @@ void Server::serverStart() {
                 continue;
             }
 
+            auto fileName = response.second.second.substr(response.second.second.find_last_of("/\\") + 1);
+
             std::cout << "ajustando pacotes... (vai dar seg fault, certeza)\n";
-            std::vector<Message_t> packets = packetManager->buildFileMessage(fileContent, localIp);
+            std::vector<Message_t> packets = packetManager->buildFileMessage(fileContent, localIp, fileName);
 
             if (packets.size() == 0) {
                 std::cerr << "Erro ao construir pacotes de arquivo." << std::endl;
