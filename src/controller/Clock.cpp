@@ -210,6 +210,26 @@ void Clock::clientsToString() {
     }
 }
 
+bool Clock::HandleTalkMessage(Message_t packet) {    
+    
+    for (auto it = talkTempReceivedPackets.begin(); it != talkTempReceivedPackets.end(); ++it) {
+        if (std::memcmp(it->id, packet.id, 4) == 0 &&
+            std::memcmp(it->ip, packet.ip, 16) == 0) {
+            // std::cout << "Mensagem já recebida: " << packet.payload << std::endl;
+            return false; // Mensagem já recebida
+        }
+    }
+    
+    // limpa a primeira mensagem temporária se o tamanho for maior que 1024
+    if(talkTempReceivedPackets.size() >= 1024) {
+        talkTempReceivedPackets.erase(talkTempReceivedPackets.begin());
+    }
+
+    talkTempReceivedPackets.push_back(packet);
+
+    return true;
+}
+
 Clock::~Clock() {
     Stop(); // Para o relógio
     std::cout << "Destruindo o relógio." << std::endl;

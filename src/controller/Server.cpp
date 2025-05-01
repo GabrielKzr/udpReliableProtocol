@@ -134,9 +134,13 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
         }
         
         case 0x0002: {
-            std::cout << "Recebi mensagem talk de " << message->ip << ": " << message->payload << std::endl;
-            std::cout << "Id da mensagem: " << uint8_to_int(message->id) << std::endl;
-            
+
+            // verifica se a mensagem já foi recebida, se não, pode printar, se sim, ignora e envia um ack
+            if(this->clock->HandleTalkMessage(*message)) {
+                std::cout << "Recebi mensagem talk de " << message->ip << ": " << message->payload << std::endl;
+                std::cout << "Id da mensagem: " << uint8_to_int(message->id) << std::endl;
+            }
+
             /* // a princípio não precisa disso, mas se quiser pode fazer (mandar NACK se dispositivo não existe na lista de clientes) 
             if(!clock->containsClient(message->ip)) {
                 
@@ -149,8 +153,6 @@ void Server::handleMessage(Message_t* message, sockaddr_in* addr, int receivedBy
                 break;
             }
             */
-
-            // std::cout << "Verificando se o cliente está no relógio...\n";
 
             auto packet = packetManager->buildAckMessage(message->id, localIp);
 

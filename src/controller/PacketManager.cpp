@@ -347,7 +347,7 @@ void PacketManager::handleNack(uint8_t reason) {
         break;
     
     case 0x02:
-        std::cout << "NACK recebido: conexão não disponível ao enviar pacote de FILE\n";
+        std::cout << "NACK recebido: pacote enviado duplicado ou mensagem corrompida\n";
         break; 
 
     default:

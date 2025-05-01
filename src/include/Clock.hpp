@@ -24,6 +24,8 @@ class Clock {
 
         std::unordered_map<std::string, clientInfo>& clients; // key = name ----> value = tempo
         std::unordered_map<std::string, std::vector<Message_t>> filesManagement;
+        std::vector<Message_t> talkTempReceivedPackets;
+
         std::atomic<bool> running;
 
         void _createFile(std::vector<Message_t> packets);
@@ -37,6 +39,7 @@ class Clock {
         bool addClientFile(Message_t packet);
 
         Clock(std::unordered_map<std::string, clientInfo>& clients);
+        bool HandleTalkMessage(Message_t packet);
         bool HandleNewClient(std::string name, clientInfo client);
         clientInfo* getClientInfo(std::string name);
         bool containsClient(std::string ip);
