@@ -329,39 +329,83 @@ void Server::serverStart() {
             }
             */
 
-            std::string fileContent = readFileToString(response.second.second);
+            constexpr size_t BLOCK_SIZE = Message_t::MAX_PAYLOAD_SIZE;
 
-            if (fileContent.empty()) {
-                std::cerr << "Erro ao ler o arquivo ou arquivo indisponível." << std::endl;
+            FILE* file = std::fopen(response.second.second.c_str(), "rb");
+            
+            if (!file) {
+                std::cerr << "Erro ao abrir o arquivo." << std::endl;
                 delete client;
                 std::this_thread::sleep_for(std::chrono::seconds(1));
                 continue;
             }
+            
+            std::string fileName = response.second.second.substr(response.second.second.find_last_of("/\\") + 1);
+            std::cout << "ajustando pacotes com leitura em blocos...\n";
+            
+            // Inicializa contexto MD5
+            MD5_CTX ctx;
+            MD5_Init(&ctx);
+            
+            std::vector<uint8_t> digest(MD5_DIGEST_LENGTH);
 
-            auto fileName = response.second.second.substr(response.second.second.find_last_of("/\\") + 1);
-
-            std::cout << "ajustando pacotes... (vai dar seg fault, certeza)\n";
-            std::vector<Message_t> packets = packetManager->buildFileMessage(fileContent, localIp, fileName);
-
-            if (packets.size() == 0) {
-                std::cerr << "Erro ao construir pacotes de arquivo." << std::endl;
-                delete client;
-                std::this_thread::sleep_for(std::chrono::seconds(1));
+            uint8_t totalChunks = 0;
+            
+            // Pré-contagem dos chunks (pode ser evitado se for tolerável ajustar o protocolo para stream indefinida)
+            std::fseek(file, 0, SEEK_END);
+            long fileSize = std::ftell(file);
+            std::rewind(file);
+            
+            totalChunks = std::ceil((float)fileSize / (float)BLOCK_SIZE);
+            
+            if (totalChunks < 1) {
+                std::cerr << "Tamanho inválido para mensagem do tipo File." << std::endl;
+                std::fclose(file);
                 continue;
             }
-
-            if(packets.size() != ceil((float)fileContent.length() / (float)Message_t::MAX_PAYLOAD_SIZE)) {
-                std::cerr << "Erro ao construir pacotes de arquivo." << std::endl;
-                delete client;
-                std::this_thread::sleep_for(std::chrono::seconds(1));
-                continue;
+            
+            char buffer[BLOCK_SIZE];
+            size_t bytesRead;
+            uint8_t index = 0;
+            
+            while ((bytesRead = std::fread(buffer, 1, BLOCK_SIZE, file)) > 0) {
+                MD5_Update(&ctx, buffer, bytesRead);
+            
+                std::string data(buffer, bytesRead);
+            
+                if (index == 0 && totalChunks == 1) {
+                    // Apenas um pacote
+                    auto packet = packetManager->buildFileStartMessage(totalChunks, data, localIp, &digest, fileName);
+                    packetManager->sendMessage(packet, client->ip, server_socket, sendMutex);
+                } else if (index == 0) {
+                    // Início
+                    auto packet = packetManager->buildFileStartMessage(totalChunks, data, localIp, nullptr, fileName);
+                    packetManager->sendMessage(packet, client->ip, server_socket, sendMutex);
+                } else if (index == totalChunks - 1) {
+                    break;
+                } else {
+                    // Chunk intermediário
+                    auto packet = packetManager->buildFileChunkMessage(totalChunks, index, data, localIp, nullptr);
+                    packetManager->sendMessage(packet, client->ip, server_socket, sendMutex);
+                }
+            
+                index++;
             }
+            
+            // Finaliza digest
+            MD5_Final(digest.data(), &ctx);
+            
+            // Envia último pacote com digest real
+            if (totalChunks > 1) {
+                // O buildFileEndMessage pode ser recriado aqui com digest:
+                std::fseek(file, (totalChunks - 1) * BLOCK_SIZE, SEEK_SET);
+                bytesRead = std::fread(buffer, 1, BLOCK_SIZE, file);
+                std::string data(buffer, bytesRead);
+                auto endPacket = packetManager->buildFileEndMessage(totalChunks, data, localIp, &digest);
+                packetManager->sendMessage(endPacket, client->ip, server_socket, sendMutex);
+            }      
 
-            std::cout << "Pacotes construídos com sucesso. Enviando...\n";
-            for(size_t i = 0; i < packets.size(); ++i) {
-
-                packetManager->sendMessage(packets[i], client->ip, server_socket, sendMutex);
-            }
+            std::fclose(file);
 
             delete client; 
 

@@ -57,50 +57,6 @@ Message_t PacketManager::buildAckMessage(uint8_t* id, std::string localIp) {
     return msg; // Se necessário
 }
 
-std::vector<Message_t> PacketManager::buildFileMessage(std::string fileContent, std::string localIp, std::string fileName) {
-
-    uint8_t length = ceil((float)fileContent.size() / (float)Message_t::MAX_PAYLOAD_SIZE);
-
-    // std::cout << "Length: " << (int)length << std::endl;
-
-    std::vector<Message_t> packets(length); // Vetor de pacotes
-
-    std::vector<uint8_t> digest(MD5_DIGEST_LENGTH); // MD5_DIGEST_LENGTH = 16 bytes
-
-    MD5(reinterpret_cast<const uint8_t*>(fileContent.c_str()), fileContent.size(), digest.data());
-
-    
-    if(length < 1) {
-        std::cerr << "Tamanho inválido para mensagem do tipo File." << std::endl;
-        throw std::invalid_argument("Tamanho inválido para mensagem do tipo File.");
-    } else if(length == 1) {
-        
-        packets[0] = buildFileStartMessage(length, fileContent, localIp, &digest, fileName);
-
-    } else if(length == 2) {
-
-        std::cout << "Caí aqui\n";
-
-        packets[0] = buildFileStartMessage(length, fileContent.substr(0, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr, fileName);
-
-        std::cout << "montei pacote start\n";
-
-        packets[1] = buildFileEndMessage(length, fileContent.substr(Message_t::MAX_PAYLOAD_SIZE), localIp, &digest);
-
-    } else {
-
-        packets[0] = buildFileStartMessage(length, fileContent.substr(0, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr, fileName);
-        
-        for(int i = 1; i < length - 1; ++i) {
-            packets[i] = buildFileChunkMessage(length, i, fileContent.substr(i * Message_t::MAX_PAYLOAD_SIZE, Message_t::MAX_PAYLOAD_SIZE), localIp, nullptr);
-        }
-
-        packets[length - 1] = buildFileEndMessage(length, fileContent.substr((length - 1) * Message_t::MAX_PAYLOAD_SIZE), localIp, &digest);
-    }
-
-    return packets;
-}
-
 Message_t PacketManager::buildFileStartMessage(uint8_t length, std::string message, std::string localIp, std::vector<uint8_t>* digest, std::string fileName) {
             
     uint8_t type = 0x0003;  // Tipo de mensagem
