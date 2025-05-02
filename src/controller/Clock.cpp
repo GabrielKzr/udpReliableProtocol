@@ -103,7 +103,7 @@ bool Clock::containsClient(std::string ip) {
     return false; // Retorna false se não encontrar
 }
 
-bool Clock::addClientFile(Message_t packet) {
+int Clock::addClientFile(Message_t packet) {
 
     /* // não bloqueia, mesmo não estando na lista de clientes
     if(clients.find(packet.name) == clients.end()) {
@@ -118,7 +118,7 @@ bool Clock::addClientFile(Message_t packet) {
         for(auto& packets : it->second) { // tratamento de pacotes duplicados
             if(packets.seq == packet.seq) {
                 std::cout << "Pacote já recebido: " << packet.seq << std::endl;
-                return false; // Pacote já recebido
+                return 0; // Pacote já recebido
             }
         }
 
@@ -128,12 +128,13 @@ bool Clock::addClientFile(Message_t packet) {
     }
 
     if(filesManagement[packet.name].size() == packet.length) {
-        if(!_handleCompleted(packet.name))
-            return false;
+        if(!_handleCompleted(packet.name)) {
+            return -1;
+        }
     }
 
 
-    return true;
+    return 1;
 }
 
 bool Clock::_handleCompleted(std::string name) {
@@ -161,12 +162,14 @@ bool Clock::_handleCompleted(std::string name) {
 
     for(size_t j = 0; j < 16; j++){
         if (packets[packets.size()-1].hash[j] != digest[j]){
+            std::cout << "Pacote corrompido: " << packets[packets.size()-1].seq << std::endl;
             return false;
         }
     }
 
-    _createFile(packets);
+    std::cout << "Pacote recebido: " << (int)packets[packets.size()-1].seq << std::endl;
 
+    _createFile(packets);
 
     filesManagement.erase(name);
 
@@ -211,19 +214,19 @@ void Clock::clientsToString() {
 bool Clock::HandleTalkMessage(Message_t packet) {    
     
     for (auto it = talkTempReceivedPackets.begin(); it != talkTempReceivedPackets.end(); ++it) {
-        if (std::memcmp(it->id, packet.id, 4) == 0 &&
-            std::memcmp(it->ip, packet.ip, 16) == 0) {
-            // std::cout << "Mensagem já recebida: " << packet.payload << std::endl;
+        if (it->second == uint8_to_int(packet.id) &&
+            std::memcmp(it->first.c_str(), packet.ip, 16) == 0) {
+            std::cout << "Mensagem já recebida: " << packet.payload << std::endl;
             return false; // Mensagem já recebida
         }
     }
     
-    // limpa a primeira mensagem temporária se o tamanho for maior que 1024
-    if(talkTempReceivedPackets.size() >= 1024) {
+    // limpa a primeira mensagem temporária se o tamanho for maior que 16
+    if(talkTempReceivedPackets.size() >= 32) {
         talkTempReceivedPackets.erase(talkTempReceivedPackets.begin());
     }
 
-    talkTempReceivedPackets.push_back(packet);
+    talkTempReceivedPackets.push_back({packet.ip, uint8_to_int(packet.id)});
 
     return true;
 }

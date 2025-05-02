@@ -48,7 +48,8 @@ class PacketManager {
         // verifica se mensagem atual já foi "acked"
         bool isAcked();
 
-        
+        bool corrupted = false;
+
         public:
         
         PacketManager(int port, std::string localName);
@@ -57,6 +58,8 @@ class PacketManager {
         bool verifyAck(uint8_t* ack);  
         void retransmitPacket(int sock, std::mutex& mtx, Message_t packet, struct sockaddr_in addr);
         void handleNack(uint8_t reason);
+
+        bool isCorrupted();
         
         // std::vector<Message_t> buildFileMessage(std::string fileContent, std::string localIp, std::string fileName);
         Message_t buildTalkMessage(std::string message, std::string localIp);

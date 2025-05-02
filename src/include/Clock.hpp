@@ -24,7 +24,7 @@ class Clock {
 
         std::unordered_map<std::string, clientInfo>& clients; // key = name ----> value = tempo
         std::unordered_map<std::string, std::vector<Message_t>> filesManagement;
-        std::vector<Message_t> talkTempReceivedPackets;
+        std::vector<std::pair<std::string, int>> talkTempReceivedPackets;
 
         std::atomic<bool> running;
 
@@ -36,7 +36,7 @@ class Clock {
 
         std::mutex clockMutex;
 
-        bool addClientFile(Message_t packet);
+        int addClientFile(Message_t packet);
 
         Clock(std::unordered_map<std::string, clientInfo>& clients);
         bool HandleTalkMessage(Message_t packet);

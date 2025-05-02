@@ -285,10 +285,15 @@ bool PacketManager::verifyAck(uint8_t* ack) {
     }
 
     actualMessage->acked = true;
+    corrupted = false; // Marca como não corrompido
     ackManagerMutex.unlock(); 
 
     return true;
 } 
+
+bool PacketManager::isCorrupted() {
+    return this->corrupted;
+}
 
 bool PacketManager::isAcked() {
     return this->actualMessage->acked;
@@ -303,7 +308,8 @@ void PacketManager::handleNack(uint8_t reason) {
         break;
     
     case 0x02:
-        std::cout << "NACK recebido: pacote enviado duplicado ou mensagem corrompida\n";
+        std::cout << "NACK recebido: pacote corrompido\n";
+        this->corrupted = true; // Marca como corrompido
         break; 
 
     default:
