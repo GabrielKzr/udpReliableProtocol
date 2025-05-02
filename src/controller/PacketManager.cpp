@@ -32,7 +32,7 @@ Message_t PacketManager::buildNackMessage(uint8_t* id, uint8_t reason, std::stri
 
     const char* name = "";
 
-    const uint8_t payload[1410] = {0};
+    const uint8_t payload[Message_t::MAX_PAYLOAD_SIZE] = {0};
 
     char fileName[20] = {0}; // nome do arquivo
 
@@ -48,7 +48,7 @@ Message_t PacketManager::buildAckMessage(uint8_t* id, std::string localIp) {
 
     const char* name = "";
 
-    const uint8_t payload[1410] = {0};
+    const uint8_t payload[Message_t::MAX_PAYLOAD_SIZE] = {0};
 
     char fileName[20] = {0}; // nome do arquivo
 

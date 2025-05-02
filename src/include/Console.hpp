@@ -10,6 +10,8 @@
 #include <limits>
 #include <sstream>
 
+#include "MessageType.hpp"
+
 class Console {
 
     private:

@@ -100,7 +100,7 @@ bool Server::sendKeepAlive() {
     
     uint8_t id[4] = {0};
     uint8_t hash[16] = {0};
-    uint8_t payload[1410] = {0};
+    uint8_t payload[Message_t::MAX_PAYLOAD_SIZE] = {0};
     char fileName[20] = {0}; // nome do arquivo
     // Enviando o pacote de heartbeat
     Message_t heartbeat(0x0001, id, this->name.c_str(), 0, 0, hash, 0, payload, localIp.c_str(), 0, fileName);

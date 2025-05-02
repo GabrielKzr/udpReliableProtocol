@@ -11,7 +11,7 @@ class Message_t {
 
     public:
 
-        static const int MAX_PAYLOAD_SIZE = 1410; // Tamanho máximo do payload
+        static const int MAX_PAYLOAD_SIZE = 1370; // Tamanho máximo do payload
 
         // ------ Header  ------
 
