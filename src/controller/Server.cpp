@@ -375,8 +375,10 @@ void Server::serverStart() {
             
                 if (index == 0 && totalChunks == 1) {
                     // Apenas um pacote
+                    MD5_Final(digest.data(), &ctx);
                     auto packet = packetManager->buildFileStartMessage(totalChunks, data, localIp, &digest, fileName);
                     packetManager->sendMessage(packet, client->ip, server_socket, sendMutex);
+                    break;
                 } else if (index == 0) {
                     // Início
                     auto packet = packetManager->buildFileStartMessage(totalChunks, data, localIp, nullptr, fileName);
@@ -392,11 +394,10 @@ void Server::serverStart() {
                 index++;
             }
             
-            // Finaliza digest
-            MD5_Final(digest.data(), &ctx);
-            
             // Envia último pacote com digest real
             if (totalChunks > 1) {
+                // Finaliza digest
+                MD5_Final(digest.data(), &ctx);
                 // O buildFileEndMessage pode ser recriado aqui com digest:
                 std::fseek(file, (totalChunks - 1) * BLOCK_SIZE, SEEK_SET);
                 bytesRead = std::fread(buffer, 1, BLOCK_SIZE, file);

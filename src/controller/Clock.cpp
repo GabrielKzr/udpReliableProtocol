@@ -161,12 +161,9 @@ bool Clock::_handleCompleted(std::string name) {
 
     for(size_t j = 0; j < 16; j++){
         if (packets[packets.size()-1].hash[j] != digest[j]){
-            
             return false;
         }
     }
-
-    // std::cout << "PAçoca\n";
 
     _createFile(packets);
 
