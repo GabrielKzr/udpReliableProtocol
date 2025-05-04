@@ -17,7 +17,6 @@ struct clientInfo {
     int port;
 };
 
-int asciiStringToInt(char* str);
 void intToLogicVectorLittleEndian(int value, uint8_t* output, int outputSize); 
 int uint8_to_int(uint8_t bytes[4]);
 std::string readFileToString(const std::string& filename);
